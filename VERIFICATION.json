@@ -1,0 +1,74 @@
+{
+  "version": "v5 \u2014 Selected Warm Dining footer",
+  "framework": "Original burger-shop: Next.js 16.4.2 / React 19 / Tailwind CSS 4",
+  "status": "PASS",
+  "checks": [
+    "Approved arch to fullscreen motion",
+    "Ivory wash with complete food grid",
+    "Exact landing in measured destination arch",
+    "Reverse scrolling",
+    "Eight viewport sizes",
+    "No page errors or horizontal overflow",
+    "Desktop and mobile navigation",
+    "Deep links",
+    "Working menu tabs, Escape, focus restoration",
+    "Booking draft save, download, clear",
+    "No-JavaScript and reduced-motion normal-flow fallbacks",
+    "Offline sandbox: allow-scripts, no network, embedded images, full motion, menu tabs and exact arch landing",
+    "Unsupported ResizeObserver API uses readable normal-flow fallback",
+    "Warm Dining integrated inside burger-shop",
+    "No giant footer wordmark",
+    "Exact small black powered by microechef credit",
+    "Eight responsive widths 320\u20131920px",
+    "Eight footer dialog actions / Escape / focus restoration",
+    "Footer timeline navigation / Back to top",
+    "Ambient pause / reduced-motion"
+  ],
+  "viewportSizes": [
+    "360x667",
+    "390x844",
+    "767x900",
+    "768x900",
+    "1440x900",
+    "1440x1000",
+    "1568x700",
+    "1920x1080"
+  ],
+  "commands": {
+    "npm run lint": "PASS \u2014 zero errors or warnings",
+    "npm run build": "PASS \u2014 production compile, TypeScript and prerender",
+    "npm audit --omit=dev": "PASS \u2014 zero production vulnerabilities"
+  },
+  "booking": "Local draft only; nothing is submitted or reserved",
+  "githubPush": false,
+  "lanDevRegression": {
+    "before": "Unlisted LAN origin: HMR WebSocket rejected; arch-scroll without motion-ready",
+    "after": "localhost, 127.0.0.1 and local LAN IP: HMR connects; arch-scroll motion-ready; kitchen stop 0.5600",
+    "testedCommands": [
+      "Fresh ZIP extraction + npm ci + npm run dev",
+      "npm run lint",
+      "npm run build"
+    ],
+    "fullLANDevChecks": "Eight viewport sizes, motion geometry, navigation, dialogs, booking draft, hash links, reduced-motion and no-JS fallback \u2014 PASS",
+    "unrestrictedOriginWildcard": false
+  },
+  "footer": {
+    "theme": "Warm Dining",
+    "giantWordmark": false,
+    "bottomCredit": "powered by microechef",
+    "creditColor": "#000000",
+    "creditFontSize": "11px mobile / 12px desktop",
+    "integratedInOriginalRepo": true,
+    "background": "Existing AI-generated restaurant still + CSS pan; not video",
+    "newFooterWidths": [
+      320,
+      360,
+      390,
+      767,
+      768,
+      1024,
+      1440,
+      1920
+    ]
+  }
+}
