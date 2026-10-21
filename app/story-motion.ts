@@ -5,8 +5,6 @@
 export function mountStoryMotion(root: HTMLElement): (() => void) | undefined {
   const hero = root.querySelector<HTMLElement>(".cinematic-hero");
   const stage = hero?.querySelector<HTMLElement>(".hero-stage");
-  const replay = root.querySelector<HTMLButtonElement>("#replay-motion");
-  const pause = root.querySelector<HTMLButtonElement>("#pause-motion");
   const lead = root.querySelector<HTMLElement>(".intro-copy .lead");
   const art = root.querySelector<HTMLElement>(".chef-art");
   const progressBar = root.querySelector<HTMLElement>(".motion-progress");
@@ -16,8 +14,6 @@ export function mountStoryMotion(root: HTMLElement): (() => void) | undefined {
   if (
     !hero ||
     !stage ||
-    !replay ||
-    !pause ||
     !lead ||
     !art ||
     !progressBar ||
@@ -32,8 +28,6 @@ export function mountStoryMotion(root: HTMLElement): (() => void) | undefined {
   const nodes = {
     hero,
     stage,
-    replay,
-    pause,
     lead,
     art,
     progressBar,
@@ -49,17 +43,11 @@ export function mountStoryMotion(root: HTMLElement): (() => void) | undefined {
     const t = clamp((x - a) / (b - a));
     return t * t * (3 - 2 * t);
   };
-  let paused = false,
-    frame = 0,
+  const paused = false;
+  let frame = 0,
     progress = 0,
     introTimer: ReturnType<typeof setTimeout> | undefined;
-  let active = !document.hidden,
-    disposed = false,
-    cursorWanted = false;
-  let cursorX = -150,
-    cursorY = -150,
-    mouseX = -150,
-    mouseY = -150;
+  let active = !document.hidden, disposed = false;
   const cleanups: (() => void)[] = [];
   function listen<T extends Event>(
     target: EventTarget,
@@ -71,11 +59,6 @@ export function mountStoryMotion(root: HTMLElement): (() => void) | undefined {
     target.addEventListener(type, handler, options);
     cleanups.push(() => target.removeEventListener(type, handler, options));
   }
-  const cursor = document.createElement("div");
-  cursor.className = "motion-cursor";
-  cursor.setAttribute("aria-hidden", "true");
-  cursor.textContent = "SCROLL";
-  root.append(cursor);
   const observer = new IntersectionObserver(
     (entries) => {
       if (disposed) return;
@@ -156,21 +139,9 @@ export function mountStoryMotion(root: HTMLElement): (() => void) | undefined {
         const drift = clamp((vh - ar.top) / (vh + ar.height)) - 0.5;
         nodes.art.style.setProperty("--chef-drift", drift.toFixed(4));
       }
-      if (cursorWanted && fine.matches && !reduce.matches && !paused) {
-        cursorX += (mouseX - cursorX) * 0.22;
-        cursorY += (mouseY - cursorY) * 0.22;
-        cursor.style.transform = `translate3d(${cursorX - 38}px,${cursorY - 38}px,0)`;
-        cursor.classList.add("visible");
-      } else cursor.classList.remove("visible");
       const scrubbing =
         !reduce.matches && !paused && Math.abs(target - progress) > 0.0003;
-      const cursorMoving =
-        cursorWanted &&
-        fine.matches &&
-        !paused &&
-        !reduce.matches &&
-        (Math.abs(mouseX - cursorX) > 0.3 || Math.abs(mouseY - cursorY) > 0.3);
-      if (scrubbing || cursorMoving) request();
+      if (scrubbing) request();
     } catch (error) {
       console.warn("Using readable story motion fallback.", error);
       failSafe();
@@ -183,16 +154,8 @@ export function mountStoryMotion(root: HTMLElement): (() => void) | undefined {
     if (reduce.matches) {
       nodes.card.inert = false;
       nodes.index.inert = false;
-      cursor.classList.remove("visible");
       root.classList.remove("intro-play");
     }
-    nodes.pause.disabled = reduce.matches;
-    nodes.pause.setAttribute("aria-pressed", String(paused));
-    nodes.pause.innerHTML = reduce.matches
-      ? "◌ <span>Reduced motion</span>"
-      : paused
-        ? "▶ <span>Resume animations</span>"
-        : "Ⅱ <span>Pause animations</span>";
     request();
   }
   function intro() {
@@ -205,21 +168,6 @@ export function mountStoryMotion(root: HTMLElement): (() => void) | undefined {
       if (!disposed) root.classList.remove("intro-play");
     }, 2000);
   }
-  listen(nodes.replay, "click", () => {
-    window.scrollTo({ top: 0, behavior: "instant" });
-    progress = 0;
-    if (paused) {
-      paused = false;
-      configure();
-    }
-    intro();
-    request();
-  });
-  listen(nodes.pause, "click", () => {
-    paused = !paused;
-    root.classList.remove("intro-play");
-    configure();
-  });
   listen(window, "scroll", request, { passive: true });
   listen(window, "resize", request, { passive: true });
   listen(reduce, "change", () => {
@@ -233,35 +181,6 @@ export function mountStoryMotion(root: HTMLElement): (() => void) | undefined {
       cancelAnimationFrame(frame);
       frame = 0;
     }
-  });
-  listen<PointerEvent>(
-    document,
-    "pointermove",
-    (event) => {
-      if (
-        !fine.matches ||
-        reduce.matches ||
-        paused ||
-        !(event.target instanceof Element)
-      )
-        return;
-      mouseX = event.clientX;
-      mouseY = event.clientY;
-      cursorWanted =
-        root.contains(event.target) &&
-        !!event.target.closest(".hero-image-frame,.location-photo") &&
-        !event.target.closest("a,button") &&
-        !root.querySelector('[role="dialog"]');
-      cursor.textContent = event.target.closest(".hero-image-frame")
-        ? "SCROLL"
-        : "";
-      request();
-    },
-    { passive: true },
-  );
-  listen(document, "pointerleave", () => {
-    cursorWanted = false;
-    request();
   });
   root.querySelectorAll<HTMLElement>(".location-card").forEach((el) => {
     listen<PointerEvent>(
@@ -321,7 +240,6 @@ export function mountStoryMotion(root: HTMLElement): (() => void) | undefined {
     clearTimeout(introTimer);
     observer.disconnect();
     cleanups.forEach((fn) => fn());
-    cursor.remove();
     failSafe();
     root.classList.remove("motion-paused");
     root

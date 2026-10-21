@@ -881,19 +881,7 @@ function OurStoryContent({
           <b>OUR STORY</b>
           <small>MicroEChef · Place &amp; Visit</small>
         </div>
-        <div className="motion-tools">
-          <button id="replay-motion" type="button">
-            ↻ <span>Replay intro</span>
-          </button>
-          <button id="pause-motion" type="button" aria-pressed="false">
-            Ⅱ <span>Pause animations</span>
-          </button>
-        </div>
         <div className="motion-progress" aria-hidden="true" />
-      </div>
-      <div className="preview-note">
-        OUR STORY · Chef profile, hours, facilities and locations are being
-        confirmed. Images are AI-generated concepts.
       </div>
       <div className="page place" id="story-page-content">
         <section className="hero hero-place cinematic-hero">
@@ -908,7 +896,6 @@ function OurStoryContent({
                   height="768"
                   sizes="100vw"
                 />
-                <figcaption>{"AI-generated concept photograph"}</figcaption>
               </figure>
             </div>
             <div aria-hidden="true" className="hero-shade"></div>
@@ -1255,9 +1242,6 @@ function OurStoryContent({
                 height="1100"
                 sizes="(max-width: 767px) 100vw, 50vw"
               />
-              <figcaption>
-                {"Illustrative AI portrait · not the actual chef"}
-              </figcaption>
             </figure>
             <div aria-hidden="true" className="chef-seal">
               <svg viewBox="0 0 120 120">
@@ -1394,7 +1378,6 @@ function OurStoryContent({
                   height="768"
                   sizes="100vw"
                 />
-                <figcaption>{"AI-generated concept photograph"}</figcaption>
               </figure>
               <div className="location-copy">
                 <span className="eyebrow">
@@ -1510,7 +1493,6 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
   const [modal, setModal] = useState<Modal>(null);
   const [footerInfo, setFooterInfo] =
     useState<keyof typeof FOOTER_INFO>("photos");
-  const [footerPaused, setFooterPaused] = useState(false);
   const [category, setCategory] = useState<Category>(categories[0]);
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState(
@@ -2068,7 +2050,7 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
         <footer
           id="footer"
           role="contentinfo"
-          className={`dining-footer site-footer${footerPaused ? " is-paused" : ""}`}
+          className="dining-footer site-footer"
           aria-label="MicroEChef footer"
         >
           <div className="dining-footer__stage" aria-hidden="true">
@@ -2267,13 +2249,6 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
             </nav>
           </div>
           <p className="dining-footer__powered">powered by microechef</p>
-          <button
-            className="dining-footer__motion"
-            aria-pressed={footerPaused}
-            onClick={() => setFooterPaused(!footerPaused)}
-          >
-            {footerPaused ? "▶ Play ambience" : "Ⅱ Pause ambience"}
-          </button>
         </footer>
       </main>
       {modal === "storyDetails" && (

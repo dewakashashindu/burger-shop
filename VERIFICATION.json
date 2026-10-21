@@ -1,5 +1,5 @@
 {
-  "version": "v6 \u2014 Separate animated Our Story / Place & Visit",
+  "version": "v7 \u2014 Clean UI / existing animations preserved",
   "framework": "Original burger-shop: Next.js 16.4.2 / React 19 / Tailwind CSS 4",
   "status": "PASS",
   "checks": [
@@ -22,7 +22,6 @@
     "Eight responsive widths 320\u20131920px",
     "Eight footer dialog actions / Escape / focus restoration",
     "Footer timeline navigation / Back to top",
-    "Ambient pause / reduced-motion",
     "Separate /our-story route and original home story section",
     "9 viewport sizes 320\u20131920px",
     "Full-bleed cinematic phase and paper wipe",
@@ -30,14 +29,21 @@
     "Real menu / local booking draft / visit / info dialogs",
     "Escape and focus restoration",
     "Small black footer credit unchanged",
-    "Replay and pause",
-    "Home \u2194 Story client navigation / scoped CSS / cursor cleanup",
     "Story \u2192 home kitchen timeline deep link",
     "Mobile navigation and scroll lock cleanup",
     "Reduced motion / no JS / missing IO fallbacks",
     "Offline two-page React preview: embedded photos/font, no network, page switching and Kitchen timeline",
     "Main Story dialog \u2192 separate page \u2192 Home: cached dialog closed and scroll unlocked",
-    "Development Strict Mode: localhost, loopback and LAN story/home controllers with zero HMR/hydration errors"
+    "Development Strict Mode: localhost, loopback and LAN story/home controllers with zero HMR/hydration errors",
+    "All requested UI removed",
+    "8 viewport sizes",
+    "Same full-bleed cinematic scene and paper wipe",
+    "Chef reveal and card hover preserved",
+    "Footer ambient pan still active without its control",
+    "Home \u2194 Story and kitchen timeline navigation",
+    "Menu and chef dialogs",
+    "Reduced-motion and no-JS fallbacks",
+    "Offline sandbox: controls/cursor/photo captions absent; cinematic motion and both-page navigation pass"
   ],
   "viewportSizes": [
     "360x667",
@@ -113,7 +119,21 @@
       "MicroEChef-Our-Story-Preview.html"
     ]
   },
-  "developmentStoryRegression": {
+  "uiCleanup": {
+    "removed": [
+      "Footer Pause ambience button",
+      "Story confirmation notice",
+      "Replay intro and Pause animations controls",
+      "Custom cursor overlay",
+      "AI-generated photo-caption tags"
+    ],
+    "motionStylesAndParametersChanged": false,
+    "scrollCalculationsUnchangedVerbatim": true,
+    "footerAmbientPan": "Still automatic and active",
+    "osReducedMotion": "Preserved",
+    "photoProvenance": "Retained in meaningful alt text and Food photos information dialog"
+  },
+  "previousDevelopmentStoryRegression": {
     "passed": true,
     "results": [
       {

@@ -1,3 +1,9 @@
+## Latest update — v7 / Clean UI, animations preserved
+
+Removed the footer’s Pause ambience button, Story confirmation notice, Replay/Pause controls, custom cursor overlay and AI-photo caption tags. All existing intro/scroll/paper-wipe/reveal/hover/footer-pan animations remain active, with their existing styles, timing and scroll calculations unchanged. OS reduced-motion preferences still work.
+
+Both offline previews have been regenerated. The new source ZIP is `burger-shop-MicroEChef-Clean-UI.zip`.
+
 ## Latest update — v6 / Separate animated Our Story page
 
 The approved **03 / Place & Visit** design is now a real **`/our-story`** route, with the approved cinematic animations. The original main page and its Story section are retained. Navigation and the same Warm Dining footer connect both pages.
