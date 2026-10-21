@@ -1,8 +1,10 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 import "./motion.css";
 import "./footer.css";
+import "./story.css";
 
 export const metadata: Metadata = {
   title: "MicroEChef — Kitchen & Good Company",
@@ -28,8 +30,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <div className="no-script-note">
             Menu dialogs and the reservation planner need JavaScript. You can
             still explore the restaurant below.
-            <a href="#kitchen">Our kitchen</a>
-            <a href="#story">Our story</a>
+            <Link href="/#kitchen">Our kitchen</Link>
+            <Link href="/our-story">Our story</Link>
           </div>
         </noscript>
         {children}

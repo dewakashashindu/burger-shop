@@ -1,3 +1,20 @@
+## Latest update — v6 / Separate animated Our Story page
+
+The approved **03 / Place & Visit** design is now a real **`/our-story`** route, with the approved cinematic animations. The original main page and its Story section are retained. Navigation and the same Warm Dining footer connect both pages.
+
+```bash
+npm ci
+npm run dev
+```
+
+Open `http://localhost:3000/our-story` directly, or select **Our story** from the website navigation. For other devices, use your computer’s actual LAN IP; the existing automatic LAN/HMR fix is retained.
+
+The ZIP contains two self-contained, interactive offline files: `MicroEChef-Preview.html` (starts on Home) and `MicroEChef-Our-Story-Preview.html` (starts on Story). Both can switch between the two pages. For normal URL routing and browser history, run the Next.js project.
+
+The footer still has no giant wordmark and ends with small black **powered by microechef**. Restaurant/chef/hours/facilities/locations remain clearly labeled placeholders pending owner confirmation. Booking is still a local draft, not a reservation submission.
+
+See **STORY.md** for page structure, animation behavior, owner setup and verification.
+
 ## Latest update — v5 / Warm Dining footer
 
 - Implemented the selected Warm Dining footer inside the original `burger-shop` Next.js app.

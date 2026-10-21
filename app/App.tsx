@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
+import { mountStoryMotion } from "./story-motion";
 import {
   useCallback,
   useEffect,
@@ -9,6 +11,7 @@ import {
   useState,
   useSyncExternalStore,
   type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -36,13 +39,45 @@ const categories = [
   "Slow sips",
 ] as const;
 type Category = (typeof categories)[number];
-type Modal = "menu" | "booking" | "visit" | "story" | "footerInfo" | null;
+type Modal =
+  | "menu"
+  | "booking"
+  | "visit"
+  | "story"
+  | "footerInfo"
+  | "storyDetails"
+  | null;
+const STORY_INFO = {
+  chef: {
+    title: "The person behind the plate.",
+    text: "The head chef’s name, background and cooking philosophy are being confirmed. The portrait is AI-generated concept imagery, not a photograph of the actual chef.",
+  },
+  branches: {
+    title: "Other locations.",
+    text: "No additional restaurant locations have been confirmed. This section is reserved for verified branches; no extra branches or addresses are being claimed.",
+  },
+} as const;
 const FOOTER_INFO = {
-  groups: { title: "Good company, always.", text: "Planning a meal with a group? Please confirm availability and arrangements with the restaurant. Group-booking options and contact details have not been supplied yet." },
-  dietary: { title: "A little care goes a long way.", text: "Please speak to the restaurant about allergies and dietary requirements before ordering. The sample menu is not an allergen guide, and this website does not guarantee that dishes are free from allergens or cross-contact." },
-  ingredients: { title: "The simple things, done with care.", text: "The dishes shown are menu ideas. Please confirm current ingredients, sourcing and availability with the restaurant before ordering." },
-  photos: { title: "A little restaurant atmosphere.", text: "Photography on this website is AI-generated concept imagery. It is not verified photography of the restaurant, its team or its dishes." },
-  privacy: { title: "A thoughtful visit.", text: "The reservation planner saves your request draft in this browser only. Nothing is submitted and no table is reserved. Use “Clear draft & personal details” in the planner to delete it. Please avoid sensitive information in your notes. Fonts may load from an external font provider; your browser contacts that provider. The restaurant’s final privacy policy must be confirmed before launch." },
+  groups: {
+    title: "Good company, always.",
+    text: "Planning a meal with a group? Please confirm availability and arrangements with the restaurant. Group-booking options and contact details have not been supplied yet.",
+  },
+  dietary: {
+    title: "A little care goes a long way.",
+    text: "Please speak to the restaurant about allergies and dietary requirements before ordering. The sample menu is not an allergen guide, and this website does not guarantee that dishes are free from allergens or cross-contact.",
+  },
+  ingredients: {
+    title: "The simple things, done with care.",
+    text: "The dishes shown are menu ideas. Please confirm current ingredients, sourcing and availability with the restaurant before ordering.",
+  },
+  photos: {
+    title: "A little restaurant atmosphere.",
+    text: "Photography on this website is AI-generated concept imagery. It is not verified photography of the restaurant, its team or its dishes.",
+  },
+  privacy: {
+    title: "A thoughtful visit.",
+    text: "The reservation planner saves your request draft in this browser only. Nothing is submitted and no table is reserved. Use “Clear draft & personal details” in the planner to delete it. Please avoid sensitive information in your notes. Fonts may load from an external font provider; your browser contacts that provider. The restaurant’s final privacy policy must be confirmed before launch.",
+  },
 } as const;
 const menu: Record<
   Category,
@@ -766,12 +801,12 @@ function BookingForm() {
               Download the request as a text file <Arrow />
             </button>
             {RESTAURANT.email && (
-              <a
+              <Link
                 className="text-link"
                 href={`mailto:${RESTAURANT.email}?subject=${encodeURIComponent("Reservation request")}&body=${encodeURIComponent(summary)}`}
               >
                 Open an email request <Arrow />
-              </a>
+              </Link>
             )}
           </div>
         )}
@@ -803,14 +838,684 @@ function BookingForm() {
   );
 }
 
-export default function App() {
+function OurStoryContent({
+  onInfo,
+  onBooking,
+  onLocation,
+}: {
+  onInfo: (key: keyof typeof STORY_INFO) => void;
+  onBooking: () => void;
+  onLocation: () => void;
+}) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const shell = contentRef.current?.closest<HTMLElement>(".story-page-shell");
+    if (!shell) return;
+    return mountStoryMotion(shell);
+  }, []);
+  const handleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!(event.target instanceof Element)) return;
+    const action = event.target.closest<HTMLElement>("[data-info]");
+    if (action) {
+      event.preventDefault();
+      const key = action.dataset.info;
+      if (key === "booking") onBooking();
+      else if (key === "location") onLocation();
+      else if (key === "chef" || key === "branches") onInfo(key);
+      return;
+    }
+    const jump = event.target.closest<HTMLElement>("[data-jump]");
+    if (jump) {
+      const target = document.getElementById(`${jump.dataset.jump}-3`);
+      target?.scrollIntoView({
+        behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+      });
+    }
+  };
+  return (
+    <div className="story-content" ref={contentRef} onClick={handleClick}>
+      <div className="studio motion-studio">
+        <div className="motion-brand">
+          <b>OUR STORY</b>
+          <small>MicroEChef · Place &amp; Visit</small>
+        </div>
+        <div className="motion-tools">
+          <button id="replay-motion" type="button">
+            ↻ <span>Replay intro</span>
+          </button>
+          <button id="pause-motion" type="button" aria-pressed="false">
+            Ⅱ <span>Pause animations</span>
+          </button>
+        </div>
+        <div className="motion-progress" aria-hidden="true" />
+      </div>
+      <div className="preview-note">
+        OUR STORY · Chef profile, hours, facilities and locations are being
+        confirmed. Images are AI-generated concepts.
+      </div>
+      <div className="page place" id="story-page-content">
+        <section className="hero hero-place cinematic-hero">
+          <div className="hero-stage">
+            <div className="hero-image-frame">
+              <figure className="place-photo">
+                <Image
+                  alt="Illustrative cream and olive restaurant interior"
+                  loading="eager"
+                  src="/images/restaurant.jpg"
+                  width="1376"
+                  height="768"
+                  sizes="100vw"
+                />
+                <figcaption>{"AI-generated concept photograph"}</figcaption>
+              </figure>
+            </div>
+            <div aria-hidden="true" className="hero-shade"></div>
+            <div aria-hidden="true" className="hero-wash"></div>
+            <div className="place-card">
+              <div className="card-surface">
+                <span
+                  className="eyebrow intro-piece"
+                  style={{ "--entry-delay": "350ms" } as CSSProperties}
+                >
+                  {"Our story / A place to feel at home"}
+                </span>
+                <h1 aria-label="Your table. Your little pause.">
+                  <span className="line-mask">
+                    <span
+                      className="line-ink"
+                      style={{ "--line": "0" } as CSSProperties}
+                    >
+                      {"Your table."}
+                    </span>
+                  </span>
+                  <span className="line-mask">
+                    <span
+                      className="line-ink"
+                      style={{ "--line": "1" } as CSSProperties}
+                    >
+                      {"Your "}
+                      <em>{"little pause."}</em>
+                    </span>
+                  </span>
+                </h1>
+                <p
+                  className="intro-piece"
+                  style={{ "--entry-delay": "460ms" } as CSSProperties}
+                >
+                  {"Get to know MicroEChef."}
+                  <br />
+                  {"Then make yourself at home."}
+                </p>
+                <button
+                  className="pill intro-piece"
+                  data-jump="visit"
+                  style={{ "--entry-delay": "570ms" } as CSSProperties}
+                >
+                  {"Plan your visit "}
+                  <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+                    <path
+                      d="M5 19 19 5M5 5h14v14"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.4"
+                    ></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div aria-hidden="true" className="hero-phrase">
+              <span>{"GOOD FOOD. GOOD COMPANY."}</span>
+              <p>
+                {"A little pause."}
+                <br />
+                <em>{"A lovely place."}</em>
+              </p>
+              <small>{"MAKE YOURSELF AT HOME."}</small>
+            </div>
+            <div aria-hidden="true" className="hero-paper-copy">
+              <span>{"A LITTLE PAUSE. A LOVELY MEAL."}</span>
+              <p>
+                {"A place to feel"}
+                <br />
+                <em>{"at home."}</em>
+              </p>
+              <small>{"THE STORY CONTINUES ↓"}</small>
+            </div>
+            <div aria-hidden="true" className="step-inside">
+              <i></i>
+              <span>{"SCROLL TO STEP INSIDE"}</span>
+            </div>
+            <div className="place-index">
+              <button data-jump="intro">{"01 / Our story"}</button>
+              <button data-jump="chef">{"02 / Our chef"}</button>
+              <button data-jump="visit">{"03 / Hours & facilities"}</button>
+              <button data-jump="locations">{"04 / Locations"}</button>
+            </div>
+          </div>
+        </section>
+        <section className="intro section wrap" id="intro-3">
+          <div
+            className="motion-reveal"
+            style={{ "--reveal-delay": "0ms" } as CSSProperties}
+          >
+            <span className="eyebrow">{"01 / A little introduction"}</span>
+            <h2 aria-label="A little kitchen. A lot of heart.">
+              <span className="line-mask">
+                <span
+                  className="line-ink"
+                  style={{ "--line": "0" } as CSSProperties}
+                >
+                  {"A little kitchen."}
+                </span>
+              </span>
+              <span className="line-mask">
+                <span
+                  className="line-ink"
+                  style={{ "--line": "1" } as CSSProperties}
+                >
+                  {"A lot of "}
+                  <em>{"heart."}</em>
+                </span>
+              </span>
+            </h2>
+          </div>
+          <div
+            className="intro-copy motion-reveal"
+            style={{ "--reveal-delay": "90ms" } as CSSProperties}
+          >
+            <p className="lead">
+              <span className="read-word">{"A"}</span>{" "}
+              <span className="read-word">{"place"}</span>{" "}
+              <span className="read-word">{"for"}</span>{" "}
+              <span className="read-word">{"familiar"}</span>{" "}
+              <span className="read-word">{"flavours,"}</span>{" "}
+              <span className="read-word">{"thoughtful"}</span>{" "}
+              <span className="read-word">{"details,"}</span>{" "}
+              <span className="read-word">{"and"}</span>{" "}
+              <span className="read-word">{"the"}</span>{" "}
+              <span className="read-word">{"people"}</span>{" "}
+              <span className="read-word">{"who"}</span>{" "}
+              <span className="read-word">{"make"}</span>{" "}
+              <span className="read-word">{"a"}</span>{" "}
+              <span className="read-word">{"meal"}</span>{" "}
+              <span className="read-word">{"worth"}</span>{" "}
+              <span className="read-word">{"remembering."}</span>
+            </p>
+            <p>
+              {
+                "MicroEChef is imagined as your neighbourhood pause. Pull up a chair for a slow lunch, a favourite bite, or a conversation that lasts a little longer. The idea is simple: good food should bring people together."
+              }
+            </p>
+            <div className="values">
+              <span>{"Thoughtfully made"}</span>
+              <span>{"Happily shared"}</span>
+              <span>{"Good company"}</span>
+            </div>
+            <p className="draft-note">
+              {
+                "Sample introduction — replace with the restaurant’s approved story."
+              }
+            </p>
+          </div>
+        </section>
+        <section className="visit section wrap" id="visit-3">
+          <article
+            className="hours-card motion-reveal"
+            id="hours-3"
+            style={{ "--reveal-delay": "0ms" } as CSSProperties}
+          >
+            <span className="eyebrow">{"03 / Make a little time"}</span>
+            <h2 aria-label="Come by. Stay a while.">
+              <span className="line-mask">
+                <span
+                  className="line-ink"
+                  style={{ "--line": "0" } as CSSProperties}
+                >
+                  {"Come by."}
+                </span>
+              </span>
+              <span className="line-mask">
+                <span
+                  className="line-ink"
+                  style={{ "--line": "1" } as CSSProperties}
+                >
+                  <em>{"Stay a while."}</em>
+                </span>
+              </span>
+            </h2>
+            <p>{"Opening hours"}</p>
+            <dl>
+              <div>
+                <dt>{"Monday – Friday"}</dt>
+                <dd>{"To be confirmed"}</dd>
+              </div>
+              <div>
+                <dt>{"Saturday"}</dt>
+                <dd>{"To be confirmed"}</dd>
+              </div>
+              <div>
+                <dt>{"Sunday & holidays"}</dt>
+                <dd>{"To be confirmed"}</dd>
+              </div>
+            </dl>
+            <p className="draft-note">
+              {
+                "No opening times have been supplied yet. Confirm service hours before planning a visit."
+              }
+            </p>
+            <button className="pill" data-info="booking">
+              {"Plan a visit "}
+              <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+                <path
+                  d="M5 19 19 5M5 5h14v14"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.4"
+                ></path>
+              </svg>
+            </button>
+          </article>
+          <article
+            className="facilities-card motion-reveal"
+            id="facilities-3"
+            style={{ "--reveal-delay": "0ms" } as CSSProperties}
+          >
+            <span className="eyebrow">{"04 / The little comforts"}</span>
+            <h2 aria-label="A space that feels like you.">
+              <span className="line-mask">
+                <span
+                  className="line-ink"
+                  style={{ "--line": "0" } as CSSProperties}
+                >
+                  {"A space that"}
+                </span>
+              </span>
+              <span className="line-mask">
+                <span
+                  className="line-ink"
+                  style={{ "--line": "1" } as CSSProperties}
+                >
+                  {"feels "}
+                  <em>{"like you."}</em>
+                </span>
+              </span>
+            </h2>
+            <p>{"Facilities & guest needs"}</p>
+            <ul className="facility-list">
+              <li style={{ "--item-delay": "0ms" } as CSSProperties}>
+                <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+                  <path
+                    d="M3 4v6m3-6v6M3 7h3m-1 3v11M15 3v18m0-18c6 3 6 8 0 9"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.4"
+                  ></path>
+                </svg>
+                <span>
+                  <b>{"Dining"}</b>
+                  <small>{"To be confirmed"}</small>
+                </span>
+              </li>
+              <li style={{ "--item-delay": "75ms" } as CSSProperties}>
+                <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+                  <path
+                    d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.9M15 3.1a4 4 0 0 1 0 7.8M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.4"
+                  ></path>
+                </svg>
+                <span>
+                  <b>{"Groups"}</b>
+                  <small>{"To be confirmed"}</small>
+                </span>
+              </li>
+              <li style={{ "--item-delay": "150ms" } as CSSProperties}>
+                <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+                  <path
+                    d="M6 21V3h7a5 5 0 0 1 0 10H6"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.4"
+                  ></path>
+                </svg>
+                <span>
+                  <b>{"Parking"}</b>
+                  <small>{"To be confirmed"}</small>
+                </span>
+              </li>
+              <li style={{ "--item-delay": "225ms" } as CSSProperties}>
+                <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+                  <path
+                    d="M2 8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0M8 16a6 6 0 0 1 8 0M12 20h.01"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.4"
+                  ></path>
+                </svg>
+                <span>
+                  <b>{"Wi-Fi"}</b>
+                  <small>{"To be confirmed"}</small>
+                </span>
+              </li>
+              <li style={{ "--item-delay": "300ms" } as CSSProperties}>
+                <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+                  <path
+                    d="M12 7v8h6l3 6M12 11H7m3 3a5 5 0 1 0 6 5M13 3h.01"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.4"
+                  ></path>
+                </svg>
+                <span>
+                  <b>{"Accessibility"}</b>
+                  <small>{"To be confirmed"}</small>
+                </span>
+              </li>
+              <li style={{ "--item-delay": "375ms" } as CSSProperties}>
+                <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+                  <path
+                    d="M5 20c1-8 5-12 14-16 1 10-4 16-12 14m-2 2L15 9"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.4"
+                  ></path>
+                </svg>
+                <span>
+                  <b>{"Dietary care"}</b>
+                  <small>{"To be confirmed"}</small>
+                </span>
+              </li>
+            </ul>
+            <p className="draft-note">
+              {
+                "Suggested categories only — these are not confirmed facilities. Accessibility and dietary arrangements must be checked with the restaurant."
+              }
+            </p>
+          </article>
+        </section>
+        <section className="chef section wrap" id="chef-3">
+          <div className="chef-art">
+            <figure className="chef-photo">
+              <Image
+                alt="AI-generated fictional chef portrait, not the actual MicroEChef chef"
+                loading="lazy"
+                src="/images/chef-portrait.jpg"
+                width="900"
+                height="1100"
+                sizes="(max-width: 767px) 100vw, 50vw"
+              />
+              <figcaption>
+                {"Illustrative AI portrait · not the actual chef"}
+              </figcaption>
+            </figure>
+            <div aria-hidden="true" className="chef-seal">
+              <svg viewBox="0 0 120 120">
+                <defs>
+                  <path
+                    d="M60,60 m-43,0 a43,43 0 1,1 86,0 a43,43 0 1,1 -86,0"
+                    id="care-circle"
+                  ></path>
+                </defs>
+                <circle
+                  cx="60"
+                  cy="60"
+                  fill="#f5f1e9"
+                  r="57"
+                  stroke="#8b9b7655"
+                ></circle>
+                <text>
+                  <textPath href="#care-circle">
+                    {"MADE WITH CARE · MEANT TO BE SHARED · "}
+                  </textPath>
+                </text>
+                <path
+                  d="M46 78c3-17 10-30 24-39M52 65c-16-1-18-11-17-18 13 3 20 8 17 18Zm8-11c-2-13 5-20 14-21 1 11-4 19-14 21Zm-5 15c12-7 20-4 22 1-7 8-15 9-22 5"
+                  fill="none"
+                  stroke="#718655"
+                  strokeWidth="1.1"
+                ></path>
+              </svg>
+            </div>
+          </div>
+          <div
+            className="chef-copy motion-reveal"
+            style={{ "--reveal-delay": "0ms" } as CSSProperties}
+          >
+            <span className="eyebrow">
+              {"02 / The person behind the plate"}
+            </span>
+            <h2 aria-label="Good food starts with good hands.">
+              <span className="line-mask">
+                <span
+                  className="line-ink"
+                  style={{ "--line": "0" } as CSSProperties}
+                >
+                  {"Good food starts"}
+                </span>
+              </span>
+              <span className="line-mask">
+                <span
+                  className="line-ink"
+                  style={{ "--line": "1" } as CSSProperties}
+                >
+                  {"with "}
+                  <em>{"good hands."}</em>
+                </span>
+              </span>
+            </h2>
+            <div className="chef-id">
+              <b>{"Your head chef"}</b>
+              <span>{"Name & role to be confirmed"}</span>
+            </div>
+            <p>
+              {
+                "Meet the person who brings the kitchen’s ideas to the table. This space is for their real background, cooking philosophy, favourite ingredients, and the little details they care about."
+              }
+            </p>
+            <blockquote>
+              {"“The simple things, done with care.”"}
+              <small>
+                {"Sample brand line, not a quote from the actual chef."}
+              </small>
+            </blockquote>
+            <button className="text-link" data-info="chef">
+              {"A little more about the chef "}
+              <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+                <path
+                  d="M5 19 19 5M5 5h14v14"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="1.4"
+                ></path>
+              </svg>
+            </button>
+          </div>
+        </section>
+        <section className="locations section wrap" id="locations-3">
+          <div className="section-heading">
+            <div
+              className="motion-reveal"
+              style={{ "--reveal-delay": "0ms" } as CSSProperties}
+            >
+              <span className="eyebrow">{"05 / Find your kind of place"}</span>
+              <h2 aria-label="Same welcome. Every table.">
+                <span className="line-mask">
+                  <span
+                    className="line-ink"
+                    style={{ "--line": "0" } as CSSProperties}
+                  >
+                    {"Same welcome."}
+                  </span>
+                </span>
+                <span className="line-mask">
+                  <span
+                    className="line-ink"
+                    style={{ "--line": "1" } as CSSProperties}
+                  >
+                    <em>{"Every table."}</em>
+                  </span>
+                </span>
+              </h2>
+            </div>
+            <p
+              className="motion-reveal"
+              style={{ "--reveal-delay": "0ms" } as CSSProperties}
+            >
+              {"Restaurant & other locations"}
+              <br />
+              <span className="draft-note">
+                {"Location details are not yet confirmed."}
+              </span>
+            </p>
+          </div>
+          <div className="location-grid">
+            <article
+              className="location-card motion-reveal"
+              style={{ "--reveal-delay": "0ms" } as CSSProperties}
+            >
+              <figure className="location-photo">
+                <Image
+                  alt="Illustrative cream and olive restaurant interior"
+                  loading="lazy"
+                  src="/images/restaurant.jpg"
+                  width="1376"
+                  height="768"
+                  sizes="100vw"
+                />
+                <figcaption>{"AI-generated concept photograph"}</figcaption>
+              </figure>
+              <div className="location-copy">
+                <span className="eyebrow">
+                  {"Location 01 / Details pending"}
+                </span>
+                <h3>{"The main restaurant"}</h3>
+                <p>
+                  {
+                    "Restaurant address, contact details and opening date will appear here once confirmed."
+                  }
+                </p>
+                <button className="text-link" data-info="location">
+                  {"Location details "}
+                  <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+                    <path
+                      d="M5 19 19 5M5 5h14v14"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.4"
+                    ></path>
+                  </svg>
+                </button>
+              </div>
+            </article>
+            <article
+              className="location-card future-location motion-reveal"
+              style={{ "--reveal-delay": "90ms" } as CSSProperties}
+            >
+              <div className="future-art">
+                <svg aria-hidden="true" fill="none" viewBox="0 0 160 160">
+                  <path
+                    d="M80 133S39 94 39 62a41 41 0 0 1 82 0c0 32-41 71-41 71Z"
+                    stroke="currentColor"
+                  ></path>
+                  <circle cx="80" cy="62" r="14" stroke="currentColor"></circle>
+                  <path d="M24 139h112M13 146h134" stroke="currentColor"></path>
+                </svg>
+                <span>{"Room for another story."}</span>
+              </div>
+              <div className="location-copy">
+                <span className="eyebrow">
+                  {"Other locations / Optional section"}
+                </span>
+                <h3>{"More places, same welcome."}</h3>
+                <p>
+                  {
+                    "Reserved for confirmed branches. No additional locations have been supplied or are being claimed."
+                  }
+                </p>
+                <button className="text-link" data-info="branches">
+                  {"About other locations "}
+                  <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+                    <path
+                      d="M5 19 19 5M5 5h14v14"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.4"
+                    ></path>
+                  </svg>
+                </button>
+              </div>
+            </article>
+          </div>
+        </section>
+        <section
+          className="closer wrap motion-reveal"
+          style={{ "--reveal-delay": "0ms" } as CSSProperties}
+        >
+          <span className="eyebrow">{"A little pause. A lovely meal."}</span>
+          <h2 aria-label="There’s always room for good company.">
+            <span className="line-mask">
+              <span
+                className="line-ink"
+                style={{ "--line": "0" } as CSSProperties}
+              >
+                {"There’s always room"}
+              </span>
+            </span>
+            <span className="line-mask">
+              <span
+                className="line-ink"
+                style={{ "--line": "1" } as CSSProperties}
+              >
+                {"for "}
+                <em>{"good company."}</em>
+              </span>
+            </span>
+          </h2>
+          <button className="pill" data-info="booking">
+            {"Find your table "}
+            <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+              <path
+                d="M5 19 19 5M5 5h14v14"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="1.4"
+              ></path>
+            </svg>
+          </button>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+export default function App({ storyPage = false }: { storyPage?: boolean }) {
+  const [storyDetail, setStoryDetail] =
+    useState<keyof typeof STORY_INFO>("chef");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [modal, setModal] = useState<Modal>(null);
-  const [footerInfo, setFooterInfo] = useState<keyof typeof FOOTER_INFO>("photos");
+  const [footerInfo, setFooterInfo] =
+    useState<keyof typeof FOOTER_INFO>("photos");
   const [footerPaused, setFooterPaused] = useState(false);
   const [category, setCategory] = useState<Category>(categories[0]);
   const [scrolled, setScrolled] = useState(false);
-  const [activeSection, setActiveSection] = useState("home");
+  const [activeSection, setActiveSection] = useState(
+    storyPage ? "story" : "home",
+  );
   const copyrightYear = useSyncExternalStore(
     () => () => {},
     () => new Date().getFullYear(),
@@ -890,40 +1595,53 @@ export default function App() {
     { label: "Our kitchen", id: "kitchen" },
     { label: "Our story", id: "story" },
   ] as const;
+  const sectionHref = (id: RestaurantSection) =>
+    id === "story"
+      ? "/our-story"
+      : storyPage
+        ? id === "home"
+          ? "/"
+          : "/#kitchen"
+        : `#${id}`;
+  const followSection = (
+    event: ReactMouseEvent<HTMLAnchorElement>,
+    id: RestaurantSection,
+  ) => {
+    if (!storyPage && id !== "story" && navigateSection(id))
+      event.preventDefault();
+  };
   return (
-    <div className="app-shell">
-      <a className="skip-link" href="#main">
+    <div className={`app-shell${storyPage ? " story-page-shell" : ""}`}>
+      <Link className="skip-link" href="#main">
         Skip to content
-      </a>
+      </Link>
       <header
         className={`navbar ${scrolled ? "scrolled" : ""} ${mobileMenu ? "menu-is-open" : ""}`}
       >
-        <a
-          href="#home"
+        <Link
+          href={sectionHref("home")}
           className="brand"
           aria-label="MicroEChef home"
           onClick={(event) => {
             setMobileMenu(false);
-            const id = event.currentTarget.getAttribute("href")?.slice(1);
-            if (isRestaurantSection(id) && navigateSection(id))
-              event.preventDefault();
+            followSection(event, "home");
           }}
         >
           MicroEChef<span>kitchen & good company</span>
-        </a>
+        </Link>
         <nav className="desktop-nav" aria-label="Main navigation">
           {navLinks.slice(1).map((link) => (
-            <a
+            <Link
               key={link.id}
               className={activeSection === link.id ? "active" : ""}
-              href={`#${link.id}`}
+              href={sectionHref(link.id)}
               onClick={(event) => {
-                if (navigateSection(link.id)) event.preventDefault();
+                followSection(event, link.id);
               }}
               aria-current={activeSection === link.id ? "location" : undefined}
             >
               {link.label}
-            </a>
+            </Link>
           ))}
           <button onClick={() => open("visit")}>Visit us</button>
           <button
@@ -963,22 +1681,20 @@ export default function App() {
         <div className="mobile-panel" ref={menuPanelRef}>
           <nav id="mobile-navigation" aria-label="Mobile navigation">
             {navLinks.map((link, i) => (
-              <a
+              <Link
                 style={{
                   transitionDelay: mobileMenu ? `${100 + i * 60}ms` : "0ms",
                 }}
                 key={link.id}
-                href={`#${link.id}`}
+                href={sectionHref(link.id)}
                 onClick={(event) => {
                   setMobileMenu(false);
-                  const id = event.currentTarget.getAttribute("href")?.slice(1);
-                  if (isRestaurantSection(id) && navigateSection(id))
-                    event.preventDefault();
+                  followSection(event, link.id);
                 }}
               >
                 {link.label}
                 <Arrow />
-              </a>
+              </Link>
             ))}
             <button
               onClick={() => openMenu()}
@@ -1007,87 +1723,32 @@ export default function App() {
         </div>
       </div>
       <main id="main">
-        <div className="arch-scroll" ref={runwayRef}>
-          <div className="scroll-stage">
-            <div className="motion-frame" aria-hidden="true">
-              <Image
-                width={1376}
-                height={768}
-                sizes="100vw"
-                src={IMAGE.restaurant}
-                alt=""
-                loading="eager"
-                fetchPriority="high"
-              />
-              <div className="motion-whitewash" />
-            </div>
-            <div className="motion-note" aria-hidden="true">
-              <span className="note-sun">☼</span>
-              <span>
-                Come hungry.
-                <br />
-                <em>Leave happy.</em>
-              </span>
-            </div>
-            <div className="motion-caption" aria-hidden="true">
-              <span>A SPACE TO SLOW DOWN</span>
-              <span>AND STAY A LITTLE LONGER ↗</span>
-            </div>
-
-            <section id="home" className="hero-section motion-layer">
-              <div className="hero-copy">
-                <div className="eyebrow flex items-center gap-3">
-                  <span className="tiny-line" /> A little pause. A lovely meal.
-                </div>
-                <h1>
-                  Your kind
-                  <br />
-                  of <em>place.</em>
-                  <span className="heading-period"> ✳</span>
-                </h1>
-                <p className="hero-description">
-                  Pull up a chair. Settle into something delicious.
-                  <br className="hidden md:block" /> At MicroEChef, there’s
-                  always room for good food
-                  <br className="hidden md:block" /> and even better company.
-                </p>
-                <div className="hero-actions">
-                  <button
-                    className="button button-dark"
-                    onClick={() => open("booking")}
-                  >
-                    Find your table <Arrow />
-                  </button>
-                  <button className="text-link" onClick={() => openMenu()}>
-                    Explore the menu <span className="long-arrow">⟶</span>
-                  </button>
-                </div>
-                <div className="hero-footnote">
-                  <div className="little-seal">
-                    <Sprig />
-                  </div>
-                  <div>
-                    <strong>Fresh food. Warm welcomes.</strong>
-                    <span>The simple things, done with care.</span>
-                  </div>
-                </div>
-              </div>
-              <div className="hero-visual">
-                <div className="arch-image">
+        {storyPage ? (
+          <OurStoryContent
+            onBooking={() => open("booking")}
+            onLocation={() => open("visit")}
+            onInfo={(key) => {
+              setStoryDetail(key);
+              open("storyDetails");
+            }}
+          />
+        ) : (
+          <>
+            <div className="arch-scroll" ref={runwayRef}>
+              <div className="scroll-stage">
+                <div className="motion-frame" aria-hidden="true">
                   <Image
                     width={1376}
                     height={768}
-                    sizes="(max-width: 767px) 100vw, 50vw"
+                    sizes="100vw"
                     src={IMAGE.restaurant}
-                    alt="A sunlit restaurant with oak tables, olive-green seating and soft linen curtains"
+                    alt=""
+                    loading="eager"
                     fetchPriority="high"
                   />
+                  <div className="motion-whitewash" />
                 </div>
-                <div className="image-caption">
-                  <span>A SPACE TO SLOW DOWN</span>
-                  <span>AND STAY A LITTLE LONGER ↗</span>
-                </div>
-                <div className="floating-note">
+                <div className="motion-note" aria-hidden="true">
                   <span className="note-sun">☼</span>
                   <span>
                     Come hungry.
@@ -1095,295 +1756,531 @@ export default function App() {
                     <em>Leave happy.</em>
                   </span>
                 </div>
-              </div>
-              <a
-                className="scroll-hint"
-                href="#kitchen"
-                onClick={(event) => {
-                  if (navigateSection("kitchen")) event.preventDefault();
-                }}
-              >
-                <span>FRESH FOOD</span>
-                <i /> <span>WARM WELCOMES</span>
-                <i />
-                <span>SIMPLE JOYS</span>
-                <span className="scroll-arrow">↓</span>
-              </a>
-            </section>
-            <section
-              id="kitchen"
-              className="kitchen-section section-padding motion-layer"
-            >
-              <div className="kitchen-intro motion-reveal">
-                <div>
-                  <span className="eyebrow">01 / From our kitchen</span>
-                  <h2>
-                    Honest food.
-                    <br />
-                    <em>Happy moments.</em>
-                  </h2>
+                <div className="motion-caption" aria-hidden="true">
+                  <span>A SPACE TO SLOW DOWN</span>
+                  <span>AND STAY A LITTLE LONGER ↗</span>
                 </div>
-                <div className="kitchen-intro-right">
-                  <p>
-                    Familiar favourites. A fresh little twist.
-                    <br />
-                    Made with care, meant to be shared.
-                  </p>
-                  <button className="text-link" onClick={() => openMenu()}>
-                    A look at the menu <Arrow />
-                  </button>
-                </div>
-              </div>
-              <div className="kitchen-layout">
-                <div className="signature-card motion-reveal">
-                  <div className="signature-image">
-                    <Image
-                      width={1376}
-                      height={768}
-                      sizes="(max-width: 767px) 100vw, 50vw"
-                      src={IMAGE.burger}
-                      alt="A brioche burger with melted cheese and crisp greens"
-                      loading="lazy"
-                    />
-                    <span className="image-label">
-                      A LITTLE CRAFT. A LOT OF FLAVOUR.
-                    </span>
-                  </div>
-                  <div className="signature-bottom">
-                    <div>
-                      <span className="eyebrow">The kitchen favourite</span>
-                      <h3>A better kind of bite.</h3>
+
+                <section id="home" className="hero-section motion-layer">
+                  <div className="hero-copy">
+                    <div className="eyebrow flex items-center gap-3">
+                      <span className="tiny-line" /> A little pause. A lovely
+                      meal.
                     </div>
-                    <button
-                      className="circle-button"
-                      onClick={() => openMenu("Kitchen favourites")}
-                      aria-label="Explore kitchen favourites"
-                    >
-                      <Arrow />
-                    </button>
-                  </div>
-                </div>
-                <div className="photo-mosaic" ref={mosaicRef}>
-                  {[
-                    {
-                      title: "Fresh &\ncomforting",
-                      subtitle: "A plate full of good things.",
-                      cat: categories[1],
-                    },
-                    {
-                      title: "Made for\nsharing.",
-                      subtitle: "Better around a table.",
-                      cat: categories[0],
-                    },
-                    {
-                      title: "Something\nfor everyone.",
-                      subtitle: "Find your new favourite.",
-                      cat: categories[1],
-                    },
-                  ].map((tile, i) => (
-                    <MaskedCard
-                      key={tile.title}
-                      position={maskPositions[i]}
-                      imageWidth={imageWidth}
-                      focalX={mobile ? 0.65 : 0.8}
-                      cardRef={(el) => {
-                        cardRefs.current[i] = el;
-                      }}
-                      className={`mosaic-tile mosaic-tile-${i} motion-reveal`}
-                      onClick={() => openMenu(tile.cat)}
-                    >
-                      <span className="mosaic-content">
-                        <span className="eyebrow">
-                          0{i + 1} / GOOD FOOD, GOOD MOOD
-                        </span>
-                        <span className="mosaic-heading">{tile.title}</span>
-                        <span className="mosaic-bottom">
-                          <span>{tile.subtitle}</span>
-                          <span className="circle-button">
-                            <Arrow />
-                          </span>
-                        </span>
-                      </span>
-                    </MaskedCard>
-                  ))}
-                </div>
-              </div>
-              <div className="kitchen-bottom">
-                <span>Good ingredients. No unnecessary fuss.</span>
-                <span className="sample-disclaimer">
-                  A taste of the concept · menu items are illustrative.
-                </span>
-                <Sprig />
-              </div>
-            </section>
-            <section
-              id="story"
-              className="story-section section-padding motion-layer"
-            >
-              <div className="story-layout">
-                <div className="story-left">
-                  <div className="story-heading">
-                    <span className="eyebrow">02 / More than a meal</span>
-                    <h2>
-                      A little kitchen.
+                    <h1>
+                      Your kind
                       <br />
-                      <em>A lot of heart.</em>
-                    </h2>
-                    <p>
-                      For slow lunches, little celebrations, and catch-ups
-                      <br className="hidden md:block" /> that last a little
-                      longer. You bring the good company.
-                      <br className="hidden md:block" /> We’ll bring the good
-                      food.
+                      of <em>place.</em>
+                      <span className="heading-period"> ✳</span>
+                    </h1>
+                    <p className="hero-description">
+                      Pull up a chair. Settle into something delicious.
+                      <br className="hidden md:block" /> At MicroEChef, there’s
+                      always room for good food
+                      <br className="hidden md:block" /> and even better
+                      company.
                     </p>
-                  </div>
-                  <div className="story-pictures">
-                    <figure>
-                      <Image
-                        width={1376}
-                        height={768}
-                        sizes="(max-width: 767px) 100vw, 50vw"
-                        src={IMAGE.chef}
-                        alt="A chef finishing a fresh pasta dish with basil"
-                        loading="lazy"
-                      />
-                      <figcaption>MADE WITH A LITTLE EXTRA CARE</figcaption>
-                    </figure>
-                    <figure>
-                      <Image
-                        width={1376}
-                        height={768}
-                        sizes="(max-width: 767px) 100vw, 50vw"
-                        src={IMAGE.dessert}
-                        alt="A slice of cheesecake with berries and a coffee"
-                        loading="lazy"
-                      />
-                      <figcaption>ALWAYS ROOM FOR SOMETHING SWEET</figcaption>
-                    </figure>
-                  </div>
-                  <div className="table-invite">
-                    <div>
-                      <span className="eyebrow">Make yourself at home.</span>
-                      <h3>
-                        There’s a place
-                        <br />
-                        for you here.
-                      </h3>
+                    <div className="hero-actions">
+                      <button
+                        className="button button-dark"
+                        onClick={() => open("booking")}
+                      >
+                        Find your table <Arrow />
+                      </button>
+                      <button className="text-link" onClick={() => openMenu()}>
+                        Explore the menu <span className="long-arrow">⟶</span>
+                      </button>
                     </div>
-                    <button
-                      className="button button-outline"
-                      onClick={() => open("booking")}
-                    >
-                      Let’s make a plan <Arrow />
-                    </button>
+                    <div className="hero-footnote">
+                      <div className="little-seal">
+                        <Sprig />
+                      </div>
+                      <div>
+                        <strong>Fresh food. Warm welcomes.</strong>
+                        <span>The simple things, done with care.</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="story-photo">
-                  <Image
-                    width={1376}
-                    height={768}
-                    sizes="(max-width: 767px) 100vw, 50vw"
-                    src={IMAGE.restaurant}
-                    alt="An inviting table in the MicroEChef restaurant concept"
-                    loading="lazy"
-                  />
-                  <div className="story-photo-top">
-                    <span className="eyebrow">
-                      MICROECHEF / GOOD COMPANY, ALWAYS
+                  <div className="hero-visual">
+                    <div className="arch-image">
+                      <Image
+                        width={1376}
+                        height={768}
+                        sizes="(max-width: 767px) 100vw, 50vw"
+                        src={IMAGE.restaurant}
+                        alt="A sunlit restaurant with oak tables, olive-green seating and soft linen curtains"
+                        fetchPriority="high"
+                      />
+                    </div>
+                    <div className="image-caption">
+                      <span>A SPACE TO SLOW DOWN</span>
+                      <span>AND STAY A LITTLE LONGER ↗</span>
+                    </div>
+                    <div className="floating-note">
+                      <span className="note-sun">☼</span>
+                      <span>
+                        Come hungry.
+                        <br />
+                        <em>Leave happy.</em>
+                      </span>
+                    </div>
+                  </div>
+                  <Link
+                    className="scroll-hint"
+                    href="#kitchen"
+                    onClick={(event) => {
+                      if (navigateSection("kitchen")) event.preventDefault();
+                    }}
+                  >
+                    <span>FRESH FOOD</span>
+                    <i /> <span>WARM WELCOMES</span>
+                    <i />
+                    <span>SIMPLE JOYS</span>
+                    <span className="scroll-arrow">↓</span>
+                  </Link>
+                </section>
+                <section
+                  id="kitchen"
+                  className="kitchen-section section-padding motion-layer"
+                >
+                  <div className="kitchen-intro motion-reveal">
+                    <div>
+                      <span className="eyebrow">01 / From our kitchen</span>
+                      <h2>
+                        Honest food.
+                        <br />
+                        <em>Happy moments.</em>
+                      </h2>
+                    </div>
+                    <div className="kitchen-intro-right">
+                      <p>
+                        Familiar favourites. A fresh little twist.
+                        <br />
+                        Made with care, meant to be shared.
+                      </p>
+                      <button className="text-link" onClick={() => openMenu()}>
+                        A look at the menu <Arrow />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="kitchen-layout">
+                    <div className="signature-card motion-reveal">
+                      <div className="signature-image">
+                        <Image
+                          width={1376}
+                          height={768}
+                          sizes="(max-width: 767px) 100vw, 50vw"
+                          src={IMAGE.burger}
+                          alt="A brioche burger with melted cheese and crisp greens"
+                          loading="lazy"
+                        />
+                        <span className="image-label">
+                          A LITTLE CRAFT. A LOT OF FLAVOUR.
+                        </span>
+                      </div>
+                      <div className="signature-bottom">
+                        <div>
+                          <span className="eyebrow">The kitchen favourite</span>
+                          <h3>A better kind of bite.</h3>
+                        </div>
+                        <button
+                          className="circle-button"
+                          onClick={() => openMenu("Kitchen favourites")}
+                          aria-label="Explore kitchen favourites"
+                        >
+                          <Arrow />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="photo-mosaic" ref={mosaicRef}>
+                      {[
+                        {
+                          title: "Fresh &\ncomforting",
+                          subtitle: "A plate full of good things.",
+                          cat: categories[1],
+                        },
+                        {
+                          title: "Made for\nsharing.",
+                          subtitle: "Better around a table.",
+                          cat: categories[0],
+                        },
+                        {
+                          title: "Something\nfor everyone.",
+                          subtitle: "Find your new favourite.",
+                          cat: categories[1],
+                        },
+                      ].map((tile, i) => (
+                        <MaskedCard
+                          key={tile.title}
+                          position={maskPositions[i]}
+                          imageWidth={imageWidth}
+                          focalX={mobile ? 0.65 : 0.8}
+                          cardRef={(el) => {
+                            cardRefs.current[i] = el;
+                          }}
+                          className={`mosaic-tile mosaic-tile-${i} motion-reveal`}
+                          onClick={() => openMenu(tile.cat)}
+                        >
+                          <span className="mosaic-content">
+                            <span className="eyebrow">
+                              0{i + 1} / GOOD FOOD, GOOD MOOD
+                            </span>
+                            <span className="mosaic-heading">{tile.title}</span>
+                            <span className="mosaic-bottom">
+                              <span>{tile.subtitle}</span>
+                              <span className="circle-button">
+                                <Arrow />
+                              </span>
+                            </span>
+                          </span>
+                        </MaskedCard>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="kitchen-bottom">
+                    <span>Good ingredients. No unnecessary fuss.</span>
+                    <span className="sample-disclaimer">
+                      A taste of the concept · menu items are illustrative.
                     </span>
                     <Sprig />
                   </div>
-                  <div className="story-overlays">
-                    <button
-                      className="story-overlay solid"
-                      onClick={() => open("story")}
-                    >
-                      <span>
-                        The heart
-                        <br />
-                        of our
-                        <br />
-                        <em>kitchen.</em>
-                      </span>
-                      <span className="circle-button">
-                        <Arrow />
-                      </span>
-                    </button>
-                    <button
-                      className="story-overlay glass"
-                      onClick={() => openMenu("Something sweet")}
-                    >
-                      <span>
-                        Save room
-                        <br />
-                        for a little
-                        <br />
-                        <em>sweetness.</em>
-                      </span>
-                      <span className="circle-button">
-                        <Arrow />
-                      </span>
-                    </button>
+                </section>
+                <section
+                  id="story"
+                  className="story-section section-padding motion-layer"
+                >
+                  <div className="story-layout">
+                    <div className="story-left">
+                      <div className="story-heading">
+                        <span className="eyebrow">02 / More than a meal</span>
+                        <h2>
+                          A little kitchen.
+                          <br />
+                          <em>A lot of heart.</em>
+                        </h2>
+                        <p>
+                          For slow lunches, little celebrations, and catch-ups
+                          <br className="hidden md:block" /> that last a little
+                          longer. You bring the good company.
+                          <br className="hidden md:block" /> We’ll bring the
+                          good food.
+                        </p>
+                      </div>
+                      <div className="story-pictures">
+                        <figure>
+                          <Image
+                            width={1376}
+                            height={768}
+                            sizes="(max-width: 767px) 100vw, 50vw"
+                            src={IMAGE.chef}
+                            alt="A chef finishing a fresh pasta dish with basil"
+                            loading="lazy"
+                          />
+                          <figcaption>MADE WITH A LITTLE EXTRA CARE</figcaption>
+                        </figure>
+                        <figure>
+                          <Image
+                            width={1376}
+                            height={768}
+                            sizes="(max-width: 767px) 100vw, 50vw"
+                            src={IMAGE.dessert}
+                            alt="A slice of cheesecake with berries and a coffee"
+                            loading="lazy"
+                          />
+                          <figcaption>
+                            ALWAYS ROOM FOR SOMETHING SWEET
+                          </figcaption>
+                        </figure>
+                      </div>
+                      <div className="table-invite">
+                        <div>
+                          <span className="eyebrow">
+                            Make yourself at home.
+                          </span>
+                          <h3>
+                            There’s a place
+                            <br />
+                            for you here.
+                          </h3>
+                        </div>
+                        <button
+                          className="button button-outline"
+                          onClick={() => open("booking")}
+                        >
+                          Let’s make a plan <Arrow />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="story-photo">
+                      <Image
+                        width={1376}
+                        height={768}
+                        sizes="(max-width: 767px) 100vw, 50vw"
+                        src={IMAGE.restaurant}
+                        alt="An inviting table in the MicroEChef restaurant concept"
+                        loading="lazy"
+                      />
+                      <div className="story-photo-top">
+                        <span className="eyebrow">
+                          MICROECHEF / GOOD COMPANY, ALWAYS
+                        </span>
+                        <Sprig />
+                      </div>
+                      <div className="story-overlays">
+                        <button
+                          className="story-overlay solid"
+                          onClick={() => open("story")}
+                        >
+                          <span>
+                            The heart
+                            <br />
+                            of our
+                            <br />
+                            <em>kitchen.</em>
+                          </span>
+                          <span className="circle-button">
+                            <Arrow />
+                          </span>
+                        </button>
+                        <button
+                          className="story-overlay glass"
+                          onClick={() => openMenu("Something sweet")}
+                        >
+                          <span>
+                            Save room
+                            <br />
+                            for a little
+                            <br />
+                            <em>sweetness.</em>
+                          </span>
+                          <span className="circle-button">
+                            <Arrow />
+                          </span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </section>
               </div>
-            </section>
-          </div>
-        </div>
-        <footer id="footer" role="contentinfo" className={`dining-footer site-footer${footerPaused ? " is-paused" : ""}`} aria-label="MicroEChef footer">
+            </div>
+          </>
+        )}
+        <footer
+          id="footer"
+          role="contentinfo"
+          className={`dining-footer site-footer${footerPaused ? " is-paused" : ""}`}
+          aria-label="MicroEChef footer"
+        >
           <div className="dining-footer__stage" aria-hidden="true">
             <div className="dining-footer__ambience">
-              <Image width={1376} height={768} sizes="100vw" src={IMAGE.restaurant} alt="" loading="lazy" className="dining-footer__image" />
+              <Image
+                width={1376}
+                height={768}
+                sizes="100vw"
+                src={IMAGE.restaurant}
+                alt=""
+                loading="lazy"
+                className="dining-footer__image"
+              />
             </div>
           </div>
           <div className="dining-footer__fog" aria-hidden="true" />
           <div className="dining-footer__content">
-            <div className="dining-brand">
-              <a className="dining-brand__logo" href="#home" aria-label="MicroEChef home" onClick={(event) => { if (navigateSection("home")) event.preventDefault(); }}>
-                <span className="dining-brand__mark" aria-hidden="true">m</span>
+            <div
+              className={
+                storyPage ? "dining-brand motion-reveal" : "dining-brand"
+              }
+            >
+              <Link
+                className="dining-brand__logo"
+                href={sectionHref("home")}
+                aria-label="MicroEChef home"
+                onClick={(event) => followSection(event, "home")}
+              >
+                <span className="dining-brand__mark" aria-hidden="true">
+                  m
+                </span>
                 <span>MicroEChef</span>
-              </a>
+              </Link>
               <h2>Good food. Good company.</h2>
-              <p className="dining-brand__text">A little kitchen for slow lunches, warm welcomes, and the people who make every meal a little more special. Pull up a chair. There’s always room for you.</p>
-              <button className="dining-brand__cta" onClick={() => open("booking")}>Find your table <Arrow /></button>
-              <p className="dining-brand__copyright">© {copyrightYear} MicroEChef. Freshly made. Happily shared.</p>
-              <p className="dining-brand__care"><Sprig /> Made with care. Meant to be shared.</p>
-              <div className="dining-brand__chips" aria-label="Our little pleasures">
-                <span><i aria-hidden="true" /> Fresh flavours</span>
-                <span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z" stroke="currentColor" strokeWidth="1.5" /></svg> Made with care</span>
-                <span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.9M15 3.1a4 4 0 0 1 0 7.8M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" stroke="currentColor" strokeWidth="1.5" /></svg> Good company</span>
+              <p className="dining-brand__text">
+                A little kitchen for slow lunches, warm welcomes, and the people
+                who make every meal a little more special. Pull up a chair.
+                There’s always room for you.
+              </p>
+              <button
+                className="dining-brand__cta"
+                onClick={() => open("booking")}
+              >
+                Find your table <Arrow />
+              </button>
+              <p className="dining-brand__copyright">
+                © {copyrightYear} MicroEChef. Freshly made. Happily shared.
+              </p>
+              <p className="dining-brand__care">
+                <Sprig /> Made with care. Meant to be shared.
+              </p>
+              <div
+                className="dining-brand__chips"
+                aria-label="Our little pleasures"
+              >
+                <span>
+                  <i aria-hidden="true" /> Fresh flavours
+                </span>
+                <span>
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    />
+                  </svg>{" "}
+                  Made with care
+                </span>
+                <span>
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.9M15 3.1a4 4 0 0 1 0 7.8M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    />
+                  </svg>{" "}
+                  Good company
+                </span>
               </div>
             </div>
-            <nav className="dining-col" aria-label="Explore">
+            <nav
+              className={storyPage ? "dining-col motion-reveal" : "dining-col"}
+              aria-label="Explore"
+            >
               <h3>Explore</h3>
               <ul>
-                {navLinks.map((link) => <li key={link.id}><a href={`#${link.id}`} onClick={(event) => { if (navigateSection(link.id)) event.preventDefault(); }}>{link.label}</a></li>)}
-                <li><button onClick={() => openMenu()}>The menu</button></li>
+                {navLinks.map((link) => (
+                  <li key={link.id}>
+                    <Link
+                      href={sectionHref(link.id)}
+                      onClick={(event) => {
+                        followSection(event, link.id);
+                      }}
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+                <li>
+                  <button onClick={() => openMenu()}>The menu</button>
+                </li>
               </ul>
             </nav>
-            <nav className="dining-col" aria-label="Your visit">
+            <nav
+              className={storyPage ? "dining-col motion-reveal" : "dining-col"}
+              aria-label="Your visit"
+            >
               <h3>Your visit</h3>
               <ul>
-                <li><button onClick={() => open("booking")}>Book a table</button></li>
-                <li><button onClick={() => { setFooterInfo("groups"); open("footerInfo"); }}>Groups</button></li>
-                <li><button onClick={() => { setFooterInfo("dietary"); open("footerInfo"); }}>Dietary needs</button></li>
-                <li><button onClick={() => open("visit")}>Contact</button></li>
+                <li>
+                  <button onClick={() => open("booking")}>Book a table</button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => {
+                      setFooterInfo("groups");
+                      open("footerInfo");
+                    }}
+                  >
+                    Groups
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => {
+                      setFooterInfo("dietary");
+                      open("footerInfo");
+                    }}
+                  >
+                    Dietary needs
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => open("visit")}>Contact</button>
+                </li>
               </ul>
             </nav>
-            <nav className="dining-col" aria-label="Good to know">
+            <nav
+              className={storyPage ? "dining-col motion-reveal" : "dining-col"}
+              aria-label="Good to know"
+            >
               <h3>Good to know</h3>
               <ul>
-                <li><button onClick={() => { setFooterInfo("ingredients"); open("footerInfo"); }}>Ingredients</button></li>
-                <li><button onClick={() => { setFooterInfo("photos"); open("footerInfo"); }}>Food photos</button></li>
-                <li><button onClick={() => { setFooterInfo("privacy"); open("footerInfo"); }}>Privacy</button></li>
-                <li><a href="#home" onClick={(event) => { if (navigateSection("home")) event.preventDefault(); }}>Back to top ↑</a></li>
+                <li>
+                  <button
+                    onClick={() => {
+                      setFooterInfo("ingredients");
+                      open("footerInfo");
+                    }}
+                  >
+                    Ingredients
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => {
+                      setFooterInfo("photos");
+                      open("footerInfo");
+                    }}
+                  >
+                    Food photos
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => {
+                      setFooterInfo("privacy");
+                      open("footerInfo");
+                    }}
+                  >
+                    Privacy
+                  </button>
+                </li>
+                <li>
+                  <Link
+                    href={storyPage ? "#main" : "#home"}
+                    onClick={(event) => {
+                      if (storyPage) {
+                        event.preventDefault();
+                        window.scrollTo({
+                          top: 0,
+                          behavior: window.matchMedia(
+                            "(prefers-reduced-motion: reduce)",
+                          ).matches
+                            ? "instant"
+                            : "smooth",
+                        });
+                      } else if (navigateSection("home"))
+                        event.preventDefault();
+                    }}
+                  >
+                    Back to top ↑
+                  </Link>
+                </li>
               </ul>
             </nav>
           </div>
           <p className="dining-footer__powered">powered by microechef</p>
-          <button className="dining-footer__motion" aria-pressed={footerPaused} onClick={() => setFooterPaused(!footerPaused)}>{footerPaused ? "▶ Play ambience" : "Ⅱ Pause ambience"}</button>
+          <button
+            className="dining-footer__motion"
+            aria-pressed={footerPaused}
+            onClick={() => setFooterPaused(!footerPaused)}
+          >
+            {footerPaused ? "▶ Play ambience" : "Ⅱ Pause ambience"}
+          </button>
         </footer>
       </main>
+      {modal === "storyDetails" && (
+        <Dialog title={STORY_INFO[storyDetail].title} onClose={closeModal}>
+          <p className="dialog-intro">{STORY_INFO[storyDetail].text}</p>
+        </Dialog>
+      )}
       {modal === "footerInfo" && (
         <Dialog title={FOOTER_INFO[footerInfo].title} onClose={closeModal}>
           <p className="dialog-intro">{FOOTER_INFO[footerInfo].text}</p>
@@ -1483,13 +2380,15 @@ export default function App() {
               <span className="eyebrow">Say hello</span>
               <p>
                 {RESTAURANT.email ? (
-                  <a href={`mailto:${RESTAURANT.email}`}>{RESTAURANT.email}</a>
+                  <Link href={`mailto:${RESTAURANT.email}`}>
+                    {RESTAURANT.email}
+                  </Link>
                 ) : (
                   "Contact details will be added before launch."
                 )}
               </p>
               {RESTAURANT.phone && (
-                <a href={`tel:${RESTAURANT.phone}`}>{RESTAURANT.phone}</a>
+                <Link href={`tel:${RESTAURANT.phone}`}>{RESTAURANT.phone}</Link>
               )}
             </div>
           </div>
@@ -1525,6 +2424,13 @@ export default function App() {
             Brand concept copy — replace this with the restaurant’s actual
             history before launch.
           </p>
+          <Link
+            className="text-link full-story-link"
+            href="/our-story"
+            onClick={closeModal}
+          >
+            Explore our full story <Arrow />
+          </Link>
           <button className="button button-dark" onClick={() => openMenu()}>
             Discover the kitchen <Arrow />
           </button>

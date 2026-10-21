@@ -1,5 +1,5 @@
 import MicroEChef from "./App";
 
 export default function Home() {
-  return <MicroEChef />;
+  return <MicroEChef key="home" />;
 }

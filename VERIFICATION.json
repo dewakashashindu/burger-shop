@@ -1,5 +1,5 @@
 {
-  "version": "v5 \u2014 Selected Warm Dining footer",
+  "version": "v6 \u2014 Separate animated Our Story / Place & Visit",
   "framework": "Original burger-shop: Next.js 16.4.2 / React 19 / Tailwind CSS 4",
   "status": "PASS",
   "checks": [
@@ -22,7 +22,22 @@
     "Eight responsive widths 320\u20131920px",
     "Eight footer dialog actions / Escape / focus restoration",
     "Footer timeline navigation / Back to top",
-    "Ambient pause / reduced-motion"
+    "Ambient pause / reduced-motion",
+    "Separate /our-story route and original home story section",
+    "9 viewport sizes 320\u20131920px",
+    "Full-bleed cinematic phase and paper wipe",
+    "All five requested sections",
+    "Real menu / local booking draft / visit / info dialogs",
+    "Escape and focus restoration",
+    "Small black footer credit unchanged",
+    "Replay and pause",
+    "Home \u2194 Story client navigation / scoped CSS / cursor cleanup",
+    "Story \u2192 home kitchen timeline deep link",
+    "Mobile navigation and scroll lock cleanup",
+    "Reduced motion / no JS / missing IO fallbacks",
+    "Offline two-page React preview: embedded photos/font, no network, page switching and Kitchen timeline",
+    "Main Story dialog \u2192 separate page \u2192 Home: cached dialog closed and scroll unlocked",
+    "Development Strict Mode: localhost, loopback and LAN story/home controllers with zero HMR/hydration errors"
   ],
   "viewportSizes": [
     "360x667",
@@ -69,6 +84,59 @@
       1024,
       1440,
       1920
+    ]
+  },
+  "routes": [
+    "/",
+    "/our-story"
+  ],
+  "ourStory": {
+    "design": "03 / Place & Visit \u2014 approved cinematic motion",
+    "framework": "Next.js file-system route, shared App.tsx UI and same footer",
+    "productionStoryViewportSizes": [
+      "320x667",
+      "360x667",
+      "390x844",
+      "767x900",
+      "768x900",
+      "1024x768",
+      "1440x1000",
+      "1568x700",
+      "1920x1080"
+    ],
+    "mainStorySectionPreserved": true,
+    "footerCssUnchanged": true,
+    "originalHomeMotionCssUnchanged": true,
+    "ownerInformation": "Chef, hours, facilities and locations unconfirmed and clearly labeled",
+    "offlinePreviews": [
+      "MicroEChef-Preview.html",
+      "MicroEChef-Our-Story-Preview.html"
+    ]
+  },
+  "developmentStoryRegression": {
+    "passed": true,
+    "results": [
+      {
+        "host": "localhost",
+        "storyProgress": "0.5417",
+        "storyControllers": 1,
+        "homeProgress": 0.56,
+        "errors": []
+      },
+      {
+        "host": "127.0.0.1",
+        "storyProgress": "0.5417",
+        "storyControllers": 1,
+        "homeProgress": 0.56,
+        "errors": []
+      },
+      {
+        "host": "169.254.0.21",
+        "storyProgress": "0.5417",
+        "storyControllers": 1,
+        "homeProgress": 0.56,
+        "errors": []
+      }
     ]
   }
 }
