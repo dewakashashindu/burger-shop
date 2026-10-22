@@ -2,6 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import AuthScreen, { type AuthStage } from "./auth/AuthScreen";
+import MenuContent, { MenuDishDetails } from "./menu/MenuContent";
+import { MENU_CATEGORIES, type MenuCategory, type MenuDish, type MenuFilter } from "./menu-data";
 import { mountStoryMotion } from "./story-motion";
 import {
   useCallback,
@@ -16,7 +20,7 @@ import {
   type RefObject,
 } from "react";
 
-// Owner setup: replace the sample menu below and these details before going live.
+// Owner setup: replace the menu below and these details before going live.
 // Leave unknown values empty: the website will never invent contact information.
 const RESTAURANT = {
   name: "MicroEChef",
@@ -28,19 +32,14 @@ const RESTAURANT = {
 const IMAGE = {
   restaurant: `/images/restaurant.jpg`,
   table: `/images/table.jpg`,
-  burger: `/images/burger.jpg`,
+  signature: `/images/chicken-kottu.jpg`,
   chef: `/images/chef.jpg`,
-  dessert: `/images/dessert.jpg`,
+  dessert: `/images/watalappan.jpg`,
 };
-const categories = [
-  "Kitchen favourites",
-  "Fresh & comforting",
-  "Something sweet",
-  "Slow sips",
-] as const;
-type Category = (typeof categories)[number];
+const categories = MENU_CATEGORIES;
+type Category = MenuCategory;
 type Modal =
-  | "menu"
+  | "dish"
   | "booking"
   | "visit"
   | "story"
@@ -64,7 +63,7 @@ const FOOTER_INFO = {
   },
   dietary: {
     title: "A little care goes a long way.",
-    text: "Please speak to the restaurant about allergies and dietary requirements before ordering. The sample menu is not an allergen guide, and this website does not guarantee that dishes are free from allergens or cross-contact.",
+    text: "Please speak to the restaurant about allergies and dietary requirements before ordering. This menu is not an allergen guide, and this website does not guarantee that dishes are free from allergens or cross-contact.",
   },
   ingredients: {
     title: "The simple things, done with care.",
@@ -79,87 +78,6 @@ const FOOTER_INFO = {
     text: "The reservation planner saves your request draft in this browser only. Nothing is submitted and no table is reserved. Use “Clear draft & personal details” in the planner to delete it. Please avoid sensitive information in your notes. Fonts may load from an external font provider; your browser contacts that provider. The restaurant’s final privacy policy must be confirmed before launch.",
   },
 } as const;
-const menu: Record<
-  Category,
-  { name: string; description: string; note: string }[]
-> = {
-  "Kitchen favourites": [
-    {
-      name: "The little classic",
-      description:
-        "A toasted brioche burger with grilled beef, cheddar, crisp greens and house sauce.",
-      note: "Signature burger",
-    },
-    {
-      name: "Golden chicken",
-      description:
-        "Crispy chicken, fresh slaw and a bright, tangy dressing in a soft bun.",
-      note: "Comfort favourite",
-    },
-    {
-      name: "Garden goodness",
-      description:
-        "A hearty vegetable patty, crunchy greens and a little herb dressing.",
-      note: "Vegetarian",
-    },
-  ],
-  "Fresh & comforting": [
-    {
-      name: "Tomato & basil pasta",
-      description:
-        "Pasta tossed with slow-cooked tomatoes, fresh basil and a little parmesan.",
-      note: "From the kitchen",
-    },
-    {
-      name: "The green bowl",
-      description:
-        "Seasonal leaves, crunchy vegetables and a fresh citrus dressing.",
-      note: "Light & lovely",
-    },
-    {
-      name: "Golden fries",
-      description:
-        "Crisp fries, a sprinkle of sea salt and your favourite dip.",
-      note: "For the table",
-    },
-  ],
-  "Something sweet": [
-    {
-      name: "A slice of slow",
-      description: "Creamy Basque-style cheesecake with a deeply golden top.",
-      note: "Kitchen-baked",
-    },
-    {
-      name: "Chocolate moment",
-      description:
-        "A warm chocolate brownie, soft in the middle and made for sharing.",
-      note: "A little indulgence",
-    },
-    {
-      name: "Seasonal sweetness",
-      description: "Something fresh, fruity and lovely. Ask what is in season.",
-      note: "Seasonal idea",
-    },
-  ],
-  "Slow sips": [
-    {
-      name: "A proper coffee",
-      description:
-        "A little pick-me-up. Enjoy it black, or with your choice of milk.",
-      note: "Take a pause",
-    },
-    {
-      name: "Citrus cooler",
-      description: "Fresh citrus, a little sweetness and plenty of ice.",
-      note: "Bright & refreshing",
-    },
-    {
-      name: "The house iced tea",
-      description: "Freshly brewed tea, served chilled with a slice of citrus.",
-      note: "Sip slowly",
-    },
-  ],
-};
 
 function Arrow({ className = "" }: { className?: string }) {
   return (
@@ -1043,7 +961,7 @@ function OurStoryContent({
             </div>
             <p className="draft-note">
               {
-                "Sample introduction — replace with the restaurant’s approved story."
+                "Slow moments. Lovely meals. Good company."
               }
             </p>
           </div>
@@ -1310,7 +1228,7 @@ function OurStoryContent({
             <blockquote>
               {"“The simple things, done with care.”"}
               <small>
-                {"Sample brand line, not a quote from the actual chef."}
+                {"Our kitchen philosophy."}
               </small>
             </blockquote>
             <button className="text-link" data-info="chef">
@@ -1486,17 +1404,18 @@ function OurStoryContent({
   );
 }
 
-export default function App({ storyPage = false }: { storyPage?: boolean }) {
+export default function App({ storyPage = false, menuPage = false, initialMenuCategory = "All dishes", authPage }: { storyPage?: boolean; menuPage?: boolean; initialMenuCategory?: MenuFilter; authPage?: AuthStage }) {
+  const router = useRouter();
+  const [selectedDish, setSelectedDish] = useState<MenuDish | null>(null);
   const [storyDetail, setStoryDetail] =
     useState<keyof typeof STORY_INFO>("chef");
   const [mobileMenu, setMobileMenu] = useState(false);
   const [modal, setModal] = useState<Modal>(null);
   const [footerInfo, setFooterInfo] =
     useState<keyof typeof FOOTER_INFO>("photos");
-  const [category, setCategory] = useState<Category>(categories[0]);
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState(
-    storyPage ? "story" : "home",
+    menuPage ? "menu" : storyPage ? "story" : "home",
   );
   const copyrightYear = useSyncExternalStore(
     () => () => {},
@@ -1515,11 +1434,16 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
   const imageWidth = useImageWidth(IMAGE.table, mosaicRef);
   const open = (value: Modal) => {
     setMobileMenu(false);
+    if (value === "booking") {
+      setModal(null);
+      router.push("/auth/login");
+      return;
+    }
     setModal(value);
   };
-  const openMenu = (value: Category = categories[0]) => {
-    setCategory(value);
-    open("menu");
+  const openMenu = (value?: Category) => {
+    setMobileMenu(false);
+    router.push(value ? `/menu?category=${encodeURIComponent(value)}` : "/menu");
   };
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -1580,7 +1504,7 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
   const sectionHref = (id: RestaurantSection) =>
     id === "story"
       ? "/our-story"
-      : storyPage
+      : storyPage || menuPage
         ? id === "home"
           ? "/"
           : "/#kitchen"
@@ -1589,11 +1513,12 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
     event: ReactMouseEvent<HTMLAnchorElement>,
     id: RestaurantSection,
   ) => {
-    if (!storyPage && id !== "story" && navigateSection(id))
+    if (!storyPage && !menuPage && id !== "story" && navigateSection(id))
       event.preventDefault();
   };
+  if (authPage) return <div className="app-shell auth-page-shell"><AuthScreen key={authPage} stage={authPage} /></div>;
   return (
-    <div className={`app-shell${storyPage ? " story-page-shell" : ""}`}>
+    <div className={`app-shell${storyPage ? " story-page-shell" : ""}${menuPage ? " menu-page-shell" : ""}`}>
       <Link className="skip-link" href="#main">
         Skip to content
       </Link>
@@ -1625,6 +1550,7 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
               {link.label}
             </Link>
           ))}
+          <Link href="/menu" className={menuPage ? "active" : ""} aria-current={menuPage ? "page" : undefined}>The menu</Link>
           <button onClick={() => open("visit")}>Visit us</button>
           <button
             className="button button-outline"
@@ -1678,13 +1604,15 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
                 <Arrow />
               </Link>
             ))}
-            <button
-              onClick={() => openMenu()}
+            <Link
+              href="/menu"
+              onClick={() => setMobileMenu(false)}
+              aria-current={menuPage ? "page" : undefined}
               style={{ transitionDelay: mobileMenu ? "280ms" : "0ms" }}
             >
               The menu
               <Arrow />
-            </button>
+            </Link>
             <button
               onClick={() => open("visit")}
               style={{ transitionDelay: mobileMenu ? "340ms" : "0ms" }}
@@ -1705,7 +1633,9 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
         </div>
       </div>
       <main id="main">
-        {storyPage ? (
+        {menuPage ? (
+          <MenuContent initialCategory={initialMenuCategory} onBooking={() => open("booking")} onDish={(dish) => { setSelectedDish(dish); open("dish"); }} />
+        ) : storyPage ? (
           <OurStoryContent
             onBooking={() => open("booking")}
             onLocation={() => open("visit")}
@@ -1852,8 +1782,8 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
                           width={1376}
                           height={768}
                           sizes="(max-width: 767px) 100vw, 50vw"
-                          src={IMAGE.burger}
-                          alt="A brioche burger with melted cheese and crisp greens"
+                          src={IMAGE.signature}
+                          alt="Illustrative Sri Lankan chicken kottu with chopped roti and vegetables"
                           loading="lazy"
                         />
                         <span className="image-label">
@@ -1867,8 +1797,8 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
                         </div>
                         <button
                           className="circle-button"
-                          onClick={() => openMenu("Kitchen favourites")}
-                          aria-label="Explore kitchen favourites"
+                          onClick={() => openMenu("Kottu & roti")}
+                          aria-label="Explore Sri Lankan favourites"
                         >
                           <Arrow />
                         </button>
@@ -1879,17 +1809,17 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
                         {
                           title: "Fresh &\ncomforting",
                           subtitle: "A plate full of good things.",
-                          cat: categories[1],
+                          cat: categories[0],
                         },
                         {
                           title: "Made for\nsharing.",
                           subtitle: "Better around a table.",
-                          cat: categories[0],
+                          cat: categories[1],
                         },
                         {
                           title: "Something\nfor everyone.",
                           subtitle: "Find your new favourite.",
-                          cat: categories[1],
+                          cat: categories[0],
                         },
                       ].map((tile, i) => (
                         <MaskedCard
@@ -1922,7 +1852,7 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
                   <div className="kitchen-bottom">
                     <span>Good ingredients. No unnecessary fuss.</span>
                     <span className="sample-disclaimer">
-                      A taste of the concept · menu items are illustrative.
+                      Made to be shared.
                     </span>
                     <Sprig />
                   </div>
@@ -1966,7 +1896,7 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
                             height={768}
                             sizes="(max-width: 767px) 100vw, 50vw"
                             src={IMAGE.dessert}
-                            alt="A slice of cheesecake with berries and a coffee"
+                            alt="Illustrative Sri Lankan watalappan coconut and jaggery custard"
                             loading="lazy"
                           />
                           <figcaption>
@@ -2150,7 +2080,7 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
                   </li>
                 ))}
                 <li>
-                  <button onClick={() => openMenu()}>The menu</button>
+                  <Link href="/menu" aria-current={menuPage ? "page" : undefined}>The menu</Link>
                 </li>
               </ul>
             </nav>
@@ -2226,9 +2156,9 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
                 </li>
                 <li>
                   <Link
-                    href={storyPage ? "#main" : "#home"}
+                    href={storyPage || menuPage ? "#main" : "#home"}
                     onClick={(event) => {
-                      if (storyPage) {
+                      if (storyPage || menuPage) {
                         event.preventDefault();
                         window.scrollTo({
                           top: 0,
@@ -2261,67 +2191,10 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
           <p className="dialog-intro">{FOOTER_INFO[footerInfo].text}</p>
         </Dialog>
       )}
-      {modal === "menu" && (
-        <Dialog title="Something delicious awaits." onClose={closeModal} wide>
-          <p className="dialog-intro">A little inspiration from our kitchen.</p>
-          <div className="notice">
-            Sample menu: dishes are illustrative. Final availability, prices and
-            allergen information must be confirmed with the restaurant.
-          </div>
-          <div
-            className="menu-tabs"
-            role="tablist"
-            aria-label="Menu categories"
-          >
-            {categories.map((cat, i) => (
-              <button
-                role="tab"
-                aria-selected={category === cat}
-                aria-controls="menu-items"
-                id={`category-${i}`}
-                key={cat}
-                className={category === cat ? "selected" : ""}
-                onClick={() => setCategory(cat)}
-                onKeyDown={(e) => {
-                  if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-                    e.preventDefault();
-                    const index = (i + (e.key === "ArrowRight" ? 1 : 3)) % 4;
-                    setCategory(categories[index]);
-                    document.getElementById(`category-${index}`)?.focus();
-                  }
-                }}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-          <div
-            className="menu-items"
-            id="menu-items"
-            role="tabpanel"
-            aria-labelledby={`category-${categories.indexOf(category)}`}
-          >
-            {menu[category].map((item) => (
-              <article key={item.name}>
-                <div>
-                  <span className="eyebrow">{item.note}</span>
-                  <h3>{item.name}</h3>
-                  <p>{item.description}</p>
-                </div>
-                <Sprig />
-              </article>
-            ))}
-          </div>
-          <p className="privacy-note">
-            Have an allergy or a dietary requirement? Ask the team before
-            ordering. This preview is not an allergen guide.
-          </p>
-          <button
-            className="button button-dark"
-            onClick={() => open("booking")}
-          >
-            Plan a visit <Arrow />
-          </button>
+      {modal === "dish" && selectedDish && (
+        <Dialog title={selectedDish.name} onClose={closeModal} wide>
+          <MenuDishDetails dish={selectedDish} />
+          <div className="wm-detail-actions"><button className="button button-dark" onClick={closeModal}>Back to the menu <Arrow /></button><button className="text-link" onClick={() => open("booking")}>Plan a visit <Arrow /></button></div>
         </Dialog>
       )}
       {modal === "booking" && (
@@ -2368,7 +2241,7 @@ export default function App({ storyPage = false }: { storyPage?: boolean }) {
             </div>
           </div>
           <div className="notice">
-            Website preview — restaurant address, hours and contact details have
+            Restaurant address, hours and contact details have
             not been provided. Images are AI-generated concept photography, not
             verified photos of the venue or its dishes.
           </div>

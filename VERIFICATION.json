@@ -1,124 +1,192 @@
 {
-  "version": "v7 \u2014 Clean UI / existing animations preserved",
+  "version": "v9 \u2014 clean auth UI integrated with approved Home, Story and Sri Lankan menu",
+  "date": "2026-10-22",
   "framework": "Original burger-shop: Next.js 16.4.2 / React 19 / Tailwind CSS 4",
   "status": "PASS",
   "checks": [
-    "Approved arch to fullscreen motion",
-    "Ivory wash with complete food grid",
-    "Exact landing in measured destination arch",
-    "Reverse scrolling",
-    "Eight viewport sizes",
-    "No page errors or horizontal overflow",
-    "Desktop and mobile navigation",
-    "Deep links",
-    "Working menu tabs, Escape, focus restoration",
-    "Booking draft save, download, clear",
-    "No-JavaScript and reduced-motion normal-flow fallbacks",
-    "Offline sandbox: allow-scripts, no network, embedded images, full motion, menu tabs and exact arch landing",
-    "Unsupported ResizeObserver API uses readable normal-flow fallback",
-    "Warm Dining integrated inside burger-shop",
-    "No giant footer wordmark",
-    "Exact small black powered by microechef credit",
-    "Eight responsive widths 320\u20131920px",
-    "Eight footer dialog actions / Escape / focus restoration",
-    "Footer timeline navigation / Back to top",
-    "Separate /our-story route and original home story section",
-    "9 viewport sizes 320\u20131920px",
-    "Full-bleed cinematic phase and paper wipe",
-    "All five requested sections",
-    "Real menu / local booking draft / visit / info dialogs",
-    "Escape and focus restoration",
-    "Small black footer credit unchanged",
-    "Story \u2192 home kitchen timeline deep link",
-    "Mobile navigation and scroll lock cleanup",
-    "Reduced motion / no JS / missing IO fallbacks",
-    "Offline two-page React preview: embedded photos/font, no network, page switching and Kitchen timeline",
-    "Main Story dialog \u2192 separate page \u2192 Home: cached dialog closed and scroll unlocked",
-    "Development Strict Mode: localhost, loopback and LAN story/home controllers with zero HMR/hydration errors",
-    "All requested UI removed",
-    "8 viewport sizes",
-    "Same full-bleed cinematic scene and paper wipe",
-    "Chef reveal and card hover preserved",
-    "Footer ambient pan still active without its control",
-    "Home \u2194 Story and kitchen timeline navigation",
-    "Menu and chef dialogs",
-    "Reduced-motion and no-JS fallbacks",
-    "Offline sandbox: controls/cursor/photo captions absent; cinematic motion and both-page navigation pass"
+    "ESLint pass",
+    "TypeScript and production build pass",
+    "Production dependency audit: 0 vulnerabilities",
+    "Existing motion/CSS/controller/LAN fingerprints unchanged"
   ],
-  "viewportSizes": [
-    "360x667",
-    "390x844",
-    "767x900",
-    "768x900",
-    "1440x900",
-    "1440x1000",
-    "1568x700",
-    "1920x1080"
-  ],
-  "commands": {
-    "npm run lint": "PASS \u2014 zero errors or warnings",
-    "npm run build": "PASS \u2014 production compile, TypeScript and prerender",
-    "npm audit --omit=dev": "PASS \u2014 zero production vulnerabilities"
-  },
-  "booking": "Local draft only; nothing is submitted or reserved",
-  "githubPush": false,
-  "lanDevRegression": {
-    "before": "Unlisted LAN origin: HMR WebSocket rejected; arch-scroll without motion-ready",
-    "after": "localhost, 127.0.0.1 and local LAN IP: HMR connects; arch-scroll motion-ready; kitchen stop 0.5600",
-    "testedCommands": [
-      "Fresh ZIP extraction + npm ci + npm run dev",
-      "npm run lint",
-      "npm run build"
+  "menu": {
+    "passed": true,
+    "checks": [
+      "Six Sri Lankan dishes only",
+      "Nine desktop/mobile widths without overflow",
+      "Every category and counts",
+      "Search/clear/empty/reset",
+      "Dish dialogs/Escape/focus restoration at all widths",
+      "Featured dish",
+      "Booking local draft save/clear",
+      "Category deep link and reset via header",
+      "Desktop and mobile Home/Menu/Story navigation",
+      "Footer credit and photo information",
+      "Removed controls remain removed",
+      "No-JavaScript readable menu",
+      "Reduced-motion readable menu",
+      "No page errors or failed local assets",
+      "Whole-card photo click target, Enter activation and keyboard focus trap"
     ],
-    "fullLANDevChecks": "Eight viewport sizes, motion geometry, navigation, dialogs, booking draft, hash links, reduced-motion and no-JS fallback \u2014 PASS",
-    "unrestrictedOriginWildcard": false
-  },
-  "footer": {
-    "theme": "Warm Dining",
-    "giantWordmark": false,
-    "bottomCredit": "powered by microechef",
-    "creditColor": "#000000",
-    "creditFontSize": "11px mobile / 12px desktop",
-    "integratedInOriginalRepo": true,
-    "background": "Existing AI-generated restaurant still + CSS pan; not video",
-    "newFooterWidths": [
-      320,
-      360,
-      390,
-      767,
-      768,
-      1024,
-      1440,
-      1920
+    "widths": [
+      {
+        "w": 1920,
+        "h": 1080,
+        "viewport": 1920,
+        "scroll": 1920,
+        "hero": 390,
+        "columns": "410.656px 410.672px 410.656px"
+      },
+      {
+        "w": 1440,
+        "h": 1000,
+        "viewport": 1440,
+        "scroll": 1440,
+        "hero": 390,
+        "columns": "410.656px 410.672px 410.656px"
+      },
+      {
+        "w": 1024,
+        "h": 768,
+        "viewport": 1024,
+        "scroll": 1024,
+        "hero": 365,
+        "columns": "306px 306px 306px"
+      },
+      {
+        "w": 900,
+        "h": 900,
+        "viewport": 900,
+        "scroll": 900,
+        "hero": 320,
+        "columns": "406px 406px"
+      },
+      {
+        "w": 768,
+        "h": 900,
+        "viewport": 768,
+        "scroll": 768,
+        "hero": 320,
+        "columns": "340px 340px"
+      },
+      {
+        "w": 767,
+        "h": 900,
+        "viewport": 767,
+        "scroll": 767,
+        "hero": 330,
+        "columns": "357.5px 357.5px"
+      },
+      {
+        "w": 390,
+        "h": 844,
+        "viewport": 390,
+        "scroll": 390,
+        "hero": 330,
+        "columns": "169px 169px"
+      },
+      {
+        "w": 360,
+        "h": 667,
+        "viewport": 360,
+        "scroll": 360,
+        "hero": 330,
+        "columns": "154px 154px"
+      },
+      {
+        "w": 320,
+        "h": 667,
+        "viewport": 320,
+        "scroll": 320,
+        "hero": 300,
+        "columns": "139px 139px"
+      }
     ]
   },
-  "routes": [
-    "/",
-    "/our-story"
-  ],
-  "ourStory": {
-    "design": "03 / Place & Visit \u2014 approved cinematic motion",
-    "framework": "Next.js file-system route, shared App.tsx UI and same footer",
-    "productionStoryViewportSizes": [
-      "320x667",
-      "360x667",
-      "390x844",
-      "767x900",
-      "768x900",
-      "1024x768",
-      "1440x1000",
-      "1568x700",
-      "1920x1080"
+  "homeRegression": {
+    "passed": true,
+    "viewportConfigurations": 8,
+    "checks": [
+      "Approved arch to fullscreen motion",
+      "Ivory wash with complete food grid",
+      "Exact landing in measured destination arch",
+      "Reverse scrolling",
+      "Eight viewport sizes",
+      "No page errors or horizontal overflow",
+      "Desktop and mobile navigation",
+      "Deep links",
+      "Sri Lankan menu route, filters, dish details, Escape, focus restoration",
+      "Booking draft save, download, clear",
+      "No-JavaScript and reduced-motion normal-flow fallbacks"
+    ]
+  },
+  "storyRegression": {
+    "passed": true,
+    "viewportConfigurations": 8,
+    "checks": [
+      "All requested UI removed",
+      "8 viewport sizes",
+      "Same full-bleed cinematic scene and paper wipe",
+      "Chef reveal and card hover preserved",
+      "Footer ambient pan still active without its control",
+      "Home \u2194 Story and kitchen timeline navigation",
+      "Menu and chef dialogs",
+      "Reduced-motion and no-JS fallbacks"
+    ]
+  },
+  "offline": {
+    "passed": true,
+    "checks": [
+      "Allow-scripts iframe with all network blocked",
+      "Embedded food photographs and font",
+      "Clean auth form actions at seven widths",
+      "No visible sample/demo/preview labels",
+      "Home/Menu/Story/Auth navigation",
+      "Booking CTA opens auth",
+      "All four entry previews updated"
     ],
-    "mainStorySectionPreserved": true,
-    "footerCssUnchanged": true,
-    "originalHomeMotionCssUnchanged": true,
-    "ownerInformation": "Chef, hours, facilities and locations unconfirmed and clearly labeled",
-    "offlinePreviews": [
+    "previews": [
+      "MicroEChef-Auth-Preview.html",
+      "MicroEChef-Menu-Preview.html",
       "MicroEChef-Preview.html",
       "MicroEChef-Our-Story-Preview.html"
     ]
   },
+  "offlineStoryRegression": {
+    "passed": true,
+    "checks": [
+      "Embedded font/photos, full-bleed cinematic phase",
+      "Chef and Sri Lankan dish dialogs",
+      "Home/Menu/Story switching",
+      "Exact Kitchen timeline landing",
+      "Mobile layout and requested UI removals"
+    ]
+  },
+  "motionPreservation": {
+    "sha256VerifiedUnchanged": {
+      "app/globals.css": "afeeb205da4f697ac6637e99ec68dd60d45efa18daf9c0a168beea1b28dfa98b",
+      "app/motion.css": "7e8e595436e8493641138a5fda63ea1ba7f3b776eb095642966eb6f5a61fcbf2",
+      "app/footer.css": "e89842fd0102f6b3357e4f3a124d6c98f7357572a9eae1f38cf161e89458a22e",
+      "app/story.css": "fc828b4b46a5052b5db38480ebdd0343bf7759b56b85420f9f56ff517feb1ed2",
+      "app/story-motion.ts": "8944b7a284d19e31b9c9c58bc4a6db330248a136364c8a7e7bf785d45a8c78be",
+      "next.config.ts": "3aaeaaf92d6eddaccbef03e5e429e0418cb6ff8f3dded8b2e46275be15bb1bbb"
+    },
+    "homeControllerBlockSHA256": "5351b1c48ea8b3fa0013a7b4501d4ce9121e7b65ae33ab2bee3bf1f9bad08527",
+    "animationTimingOrStyleChanges": false
+  },
+  "ownerInformation": {
+    "menu": "Six illustrative Sri Lankan dishes, no confirmed prices, no guaranteed allergen claims",
+    "photography": "AI-generated illustrative photographs, not verified real dishes/venue/team",
+    "businessDetails": "Chef, hours, facilities, location and contacts still unconfirmed",
+    "reservations": "Find your table opens auth UI; no submission, account or reservation",
+    "authentication": "UI only; no credential check, account database, SMS/OTP verifier, reset token, Google OAuth or session"
+  },
+  "offlinePreviews": [
+    "MicroEChef-Auth-Preview.html",
+    "MicroEChef-Menu-Preview.html",
+    "MicroEChef-Preview.html",
+    "MicroEChef-Our-Story-Preview.html"
+  ],
   "uiCleanup": {
     "removed": [
       "Footer Pause ambience button",
@@ -157,6 +225,49 @@
         "homeProgress": 0.56,
         "errors": []
       }
+    ]
+  },
+  "dependencyAudit": {
+    "productionVulnerabilities": 0,
+    "inheritedDevelopmentHighFindings": 5,
+    "forcedDependencyUpgrades": false
+  },
+  "auth": {
+    "passed": true,
+    "screens": [
+      "/auth/login",
+      "/auth/signup",
+      "/auth/forgot-password",
+      "/auth/otp",
+      "/auth/verify-phone",
+      "/auth/reset-password"
+    ],
+    "checks": [
+      "Phone + password fields; Google button after form action on Login/Signup",
+      "Google button cream/olive, official multicolour G, not blue",
+      "No Account help, sample/demo labels, fixed OTP helper or preview toolbar",
+      "Find your table, Book a table and Plan a visit open login from Home/Menu/Story/mobile",
+      "Password visibility toggles; required, length and confirmation validation",
+      "Name/phone tab-memory draft; passwords and credentials not retained",
+      "Google and sign-in actions state service is not connected",
+      "Forgot \u2192 OTP \u2192 new-password UI transition; no verified code or token",
+      "Signup \u2192 verification UI; no account created",
+      "Privacy dialog Escape and focus restoration",
+      "No leaked scroll lock after auth navigation",
+      "Six routes at nine widths without overflow",
+      "No-JS and reduced-motion readable",
+      "No form POSTs, page errors or fake success"
+    ],
+    "widths": [
+      1920,
+      1440,
+      1024,
+      900,
+      768,
+      767,
+      390,
+      360,
+      320
     ]
   }
 }

@@ -5,6 +5,8 @@ import "./globals.css";
 import "./motion.css";
 import "./footer.css";
 import "./story.css";
+import "./menu.css";
+import "./auth.css";
 
 export const metadata: Metadata = {
   title: "MicroEChef — Kitchen & Good Company",
@@ -28,10 +30,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <noscript>
           <div className="no-script-note">
-            Menu dialogs and the reservation planner need JavaScript. You can
+            Menu filters, dish details and account forms need JavaScript. You can
             still explore the restaurant below.
             <Link href="/#kitchen">Our kitchen</Link>
             <Link href="/our-story">Our story</Link>
+            <Link href="/menu">The menu</Link>
           </div>
         </noscript>
         {children}
