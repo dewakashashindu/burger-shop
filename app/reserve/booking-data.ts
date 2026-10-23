@@ -12,7 +12,20 @@ export type Room = {
   gallery: string[];
 };
 
-export type Dish = { id: string; name: string; tag: string; img: string; price: number; desc: string };
+export type Dish = {
+  id: string;
+  name: string;
+  tag: string;
+  img: string;
+  price: number;
+  desc: string;
+  /** Top tab (F -> Food) when the row comes from the restaurant database. */
+  category?: string;
+  /** L1Des — the first sub-category card. */
+  group?: string;
+  /** L2Des — the second sub-category card. */
+  sub?: string;
+};
 
 export const PHOTO = {
   restaurant: "/images/restaurant.jpg",

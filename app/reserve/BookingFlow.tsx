@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { CATS, DISHES, PACKAGES, PHOTO, ROOMS, money, type Room } from "./booking-data";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { CATS, DISHES, PACKAGES, PHOTO, ROOMS, money, type Dish, type Room } from "./booking-data";
+import type { MenuDish } from "../menu-data";
 
 type View =
   | "choose"
@@ -29,6 +30,26 @@ const phoneOk = (v: string) => {
   const digits = v.replace(/[\s()-]/g, "");
   return /^(?:\+94|0094|0)?7\d{8}$/.test(digits) || /^\+?\d{9,15}$/.test(digits);
 };
+
+// The order page reads the same read-only menu as /menu, so the three levels
+// (Category -> L1Des -> L2Des -> dish) behave exactly the same in both places.
+function useLiveOrderMenu() {
+  const [rows, setRows] = useState<MenuDish[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    fetch("/api/menu/items", { signal: controller.signal, cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { items?: MenuDish[] } | null) => {
+        if (!cancelled && Array.isArray(data?.items) && data.items.length) setRows(data.items);
+      })
+      .catch(() => {
+        /* keep the built-in dishes */
+      });
+    return () => { cancelled = true; controller.abort(); };
+  }, []);
+  return rows;
+}
 
 const Arrow = () => (
   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -186,9 +207,34 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
 
   const [order, setOrder] = useState({ method: "delivery" as "delivery" | "pickup", name: "", phone: "", address: "", note: "" });
   const [cart, setCart] = useState<Record<string, number>>({});
-  const items = Object.entries(cart)
-    .map(([id, qty]) => ({ ...DISHES.find((d) => d.id === id)!, qty }))
-    .filter((d) => d.id);
+
+  // Same tree as the menu page: top tab, then L1Des cards, then L2Des cards.
+  const liveMenu = useLiveOrderMenu();
+  const dishes: Dish[] = useMemo(
+    () =>
+      liveMenu
+        ? liveMenu.map((item) => ({
+            id: item.id,
+            name: item.name,
+            tag: item.subGroup || item.group || item.categoryLabel || "",
+            img: item.image,
+            price: item.price ?? 0,
+            desc: item.description,
+            category: item.categoryLabel || item.category,
+            group: item.group || "",
+            sub: item.subGroup || "",
+          }))
+        : DISHES.map((dish) => ({ ...dish, category: "Food", group: dish.tag, sub: "" })),
+    [liveMenu],
+  );
+  const [orderCat, setOrderCat] = useState("All dishes");
+  const [orderGroup, setOrderGroup] = useState("");
+  const [orderSub, setOrderSub] = useState("");
+
+  const items = Object.entries(cart).flatMap(([id, qty]) => {
+    const dish = dishes.find((d) => d.id === id);
+    return dish ? [{ ...dish, qty }] : [];
+  });
   const count = items.reduce((a, d) => a + d.qty, 0);
   const subtotal = items.reduce((a, d) => a + d.price * d.qty, 0);
   const delivery = order.method === "delivery" ? 350 : 0;
@@ -286,7 +332,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
   };
 
   const addToCart = (id: string) => {
-    const dish = DISHES.find((d) => d.id === id);
+    const dish = dishes.find((d) => d.id === id);
     if (!dish) return;
     setCart((old) => ({ ...old, [id]: (old[id] ?? 0) + 1 }));
     flyToCart(id);
@@ -464,7 +510,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
         </section>
         {summary(
           <>
-            <h4>Dinner at MicroEChef</h4>
+            <h4>Dinner at Mila Mirissa</h4>
             <div className="sum-line"><span>Guest</span><b>{t.name || "—"}</b></div>
             <div className="sum-line"><span>Date</span><b>{t.date || "—"}</b></div>
             <div className="sum-line"><span>Time</span><b>{t.time || "—"}</b></div>
@@ -705,6 +751,42 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     </aside>
   );
 
+  // ── order menu tree (Category -> L1Des -> L2Des -> dish) ──────────────────
+  const orderCats = ["All dishes", ...Array.from(new Set(dishes.map((d) => d.category || "Food")))];
+  const activeCat = orderCats.includes(orderCat) ? orderCat : "All dishes";
+  const orderInCat = activeCat === "All dishes" ? dishes : dishes.filter((d) => (d.category || "Food") === activeCat);
+  const orderGroupNames = activeCat === "All dishes" ? [] : Array.from(new Set(orderInCat.map((d) => d.group || "").filter(Boolean)));
+  const orderInGroup = orderGroup ? orderInCat.filter((d) => d.group === orderGroup) : orderInCat;
+  const orderSubNames = orderGroup ? Array.from(new Set(orderInGroup.map((d) => d.sub || "").filter(Boolean))) : [];
+  const buildCollection = (name: string, rows: Dish[], subCount: number) => ({
+    name,
+    count: rows.length,
+    subCount,
+    cover: rows[0],
+    names: rows.slice(0, 3).map((d) => d.name).join(", ") + (rows.length > 3 ? ` + ${rows.length - 3} more` : ""),
+    meta: [subCount ? `${subCount} sub ${subCount === 1 ? "category" : "categories"}` : "", `${rows.length} ${rows.length === 1 ? "dish" : "dishes"}`].filter(Boolean).join(" · "),
+  });
+  let orderCollections: ReturnType<typeof buildCollection>[] = [];
+  let orderVisible: Dish[];
+  if (activeCat === "All dishes") {
+    orderVisible = dishes;
+  } else if (!orderGroup) {
+    orderCollections = orderGroupNames.map((name) => {
+      const rows = orderInCat.filter((d) => d.group === name);
+      return buildCollection(name, rows, new Set(rows.map((d) => d.sub || "").filter(Boolean)).size);
+    });
+    orderVisible = orderInCat.filter((d) => !d.group);
+  } else if (!orderSub) {
+    orderCollections = orderSubNames.map((name) => buildCollection(name, orderInGroup.filter((d) => d.sub === name), 0));
+    orderVisible = orderInGroup.filter((d) => !d.sub);
+  } else {
+    orderVisible = orderInGroup.filter((d) => d.sub === orderSub);
+  }
+  const orderStatusText = [
+    orderCollections.length ? `${orderCollections.length} sub ${orderCollections.length === 1 ? "category" : "categories"}` : "",
+    orderVisible.length ? `${orderVisible.length} ${orderVisible.length === 1 ? "dish" : "dishes"}${orderSub ? ` in ${orderSub}` : orderGroup ? ` in ${orderGroup}` : activeCat !== "All dishes" ? ` in ${activeCat}` : ""}` : (orderCollections.length ? `${orderInCat.length} dishes in ${activeCat}` : ""),
+  ].filter(Boolean).join(" · ");
+
   const orderView = (
     <main className="shell flow">
       {crumbs([{ label: "Start", onClick: () => go("choose") }, { label: "Order online" }])}
@@ -719,9 +801,63 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
           <button type="button" aria-pressed={order.method === "pickup"} onClick={() => setOrder({ ...order, method: "pickup" })}>Pickup</button>
         </div>
       </div>
+      <div className="order-cats" role="group" aria-label="Filter the order menu by category">
+        {orderCats.map((c) => (
+          <button key={c} type="button" aria-pressed={activeCat === c} onClick={() => { setOrderCat(c); setOrderGroup(""); setOrderSub(""); }}>
+            {c}<span>{c === "All dishes" ? dishes.length : dishes.filter((d) => (d.category || "Food") === c).length}</span>
+          </button>
+        ))}
+      </div>
+      {activeCat !== "All dishes" && (
+        <div className="order-path" aria-label="Menu path">
+          <button type="button" onClick={() => { setOrderCat("All dishes"); setOrderGroup(""); setOrderSub(""); }}>All dishes</button>
+          <i aria-hidden="true">/</i>
+          {orderGroup
+            ? <button type="button" onClick={() => { setOrderGroup(""); setOrderSub(""); }}>{activeCat}</button>
+            : <span>{activeCat}</span>}
+          {orderGroup && (<>
+            <i aria-hidden="true">/</i>
+            {orderSub
+              ? <button type="button" onClick={() => setOrderSub("")}>{orderGroup}</button>
+              : <span>{orderGroup}</span>}
+          </>)}
+          {orderSub && (<><i aria-hidden="true">/</i><span>{orderSub}</span></>)}
+        </div>
+      )}
+      <p className="order-status micro" role="status">{orderStatusText}</p>
       <div className="cart-layout">
         <div className="order-grid">
-          {DISHES.map((d, i) => (
+          {orderCollections.map((c) => (
+            <article
+              className="dish is-coll"
+              key={`coll-${c.name}`}
+              role="button"
+              tabIndex={0}
+              aria-label={`Open ${c.name}, ${c.meta}`}
+              onClick={() => { if (orderGroup) setOrderSub(c.name); else { setOrderGroup(c.name); setOrderSub(""); } }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  if (orderGroup) setOrderSub(c.name); else { setOrderGroup(c.name); setOrderSub(""); }
+                }
+              }}
+            >
+              <div className="ph">
+                <Image src={c.cover.img} alt={c.name} width={1200} height={746} sizes="(max-width:767px) 100vw, 33vw" />
+                <span className="tag">{c.count} {c.count === 1 ? "dish" : "dishes"}</span>
+              </div>
+              <div className="body">
+                <span className="eyebrow">SUB CATEGORY</span>
+                <h3>{c.name}</h3>
+                <p>{c.names}</p>
+                <div className="foot">
+                  <span className="micro">{c.meta}</span>
+                  <span className="coll-open" aria-hidden="true"><Arrow /></span>
+                </div>
+              </div>
+            </article>
+          ))}
+          {orderVisible.map((d, i) => (
             <article className="dish reveal" style={{ ["--d" as string]: `${Math.min(i, 6) * 60}ms` }} key={d.id} data-dish={d.id}>
               <div className="ph">
                 <Image ref={(el) => { dishRefs.current[d.id] = el; }} src={d.img} alt={d.name} width={1200} height={746} sizes="(max-width:767px) 100vw, 33vw" />
@@ -831,7 +967,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
             ) : (
               <div className="field full">
                 <label htmlFor="oaddr">Pickup</label>
-                <input id="oaddr" value="MicroEChef, restaurant counter" readOnly />
+                <input id="oaddr" value="Mila Mirissa, restaurant counter" readOnly />
               </div>
             )}
             <TextArea id="onote" label="Notes for the kitchen" value={order.note} onChange={(v) => setOrder({ ...order, note: v })} placeholder="Spice level, allergies, gate code…" />
@@ -905,7 +1041,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
       <a className="skip" href="#reserve-main">Skip to content</a>
       <header className="site-head">
         <div className="shell head-in">
-          <Link className="brand" href="/" aria-label="MicroEChef home">MicroEChef<small>KITCHEN &amp; GOOD COMPANY</small></Link>
+          <Link className="brand" href="/" aria-label="Mila Mirissa home">Mila Mirissa<small>KITCHEN &amp; GOOD COMPANY</small></Link>
           <div className="head-right">
             {showCart && (
               <button className="cart-btn" type="button" onClick={() => go("cart")} aria-label={`Open cart, ${count} ${count === 1 ? "item" : "items"}`}>
