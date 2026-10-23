@@ -1730,6 +1730,7 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
                         sizes="(max-width: 767px) 100vw, 50vw"
                         src={IMAGE.restaurant}
                         alt="A sunlit restaurant with oak tables, olive-green seating and soft linen curtains"
+                        loading="eager"
                         fetchPriority="high"
                       />
                     </div>

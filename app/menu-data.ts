@@ -7,19 +7,31 @@ export const MENU_CATEGORIES = [
   "Something sweet",
 ] as const;
 export type MenuCategory = (typeof MENU_CATEGORIES)[number];
-export type MenuFilter = "All dishes" | MenuCategory;
+export type MenuFilter = string;
 export type MenuDish = {
   id: string;
   name: string;
-  category: MenuCategory;
+  /** A built-in category, or any category returned by the database. */
+  category: MenuCategory | string;
   note: string;
   image: string;
   alt: string;
   description: string;
   detail: string;
+  /** Only present when the dish came from the database. */
+  price?: number;
+  /** Readable top tab (F → Food, B → Beverage, O → Other). */
+  categoryLabel?: string;
+  /** Main group (L1Des) — used as the sub-category chips. */
+  group?: string;
+  subGroup?: string;
 };
 export function isMenuCategory(value: unknown): value is MenuCategory {
   return MENU_CATEGORIES.some((category) => category === value);
+}
+/** Any non-empty category slug, including ones the database adds later. */
+export function isMenuFilter(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
 }
 export const SRI_LANKAN_MENU: MenuDish[] = [
   {

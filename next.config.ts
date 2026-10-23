@@ -26,6 +26,8 @@ const nextConfig: NextConfig = {
       ...extraDevHosts,
     ]),
   ],
+  // The SQL driver stays outside the bundle and is loaded at runtime.
+  serverExternalPackages: ["mssql"],
   experimental: {
     agentFeedback: true,
   },
