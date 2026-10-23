@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AuthScreen, { type AuthStage } from "./auth/AuthScreen";
+import BookingFlow from "./reserve/BookingFlow";
+import SiteFooter from "./SiteFooter";
 import MenuContent, { MenuDishDetails } from "./menu/MenuContent";
 import { MENU_CATEGORIES, type MenuCategory, type MenuDish, type MenuFilter } from "./menu-data";
 import { mountStoryMotion } from "./story-motion";
@@ -1404,7 +1406,7 @@ function OurStoryContent({
   );
 }
 
-export default function App({ storyPage = false, menuPage = false, initialMenuCategory = "All dishes", authPage }: { storyPage?: boolean; menuPage?: boolean; initialMenuCategory?: MenuFilter; authPage?: AuthStage }) {
+export default function App({ storyPage = false, menuPage = false, initialMenuCategory = "All dishes", authPage, reservePage = false, orderPage = false }: { storyPage?: boolean; menuPage?: boolean; initialMenuCategory?: MenuFilter; authPage?: AuthStage; reservePage?: boolean; orderPage?: boolean }) {
   const router = useRouter();
   const [selectedDish, setSelectedDish] = useState<MenuDish | null>(null);
   const [storyDetail, setStoryDetail] =
@@ -1517,6 +1519,13 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
       event.preventDefault();
   };
   if (authPage) return <div className="app-shell auth-page-shell"><AuthScreen key={authPage} stage={authPage} /></div>;
+  if (reservePage || orderPage)
+    return (
+      <div className={`app-shell reserve-page-shell${orderPage ? " order-page-shell" : ""}`}>
+        <BookingFlow key={orderPage ? "order" : "reserve"} start={orderPage ? "order" : "choose"} />
+        <SiteFooter />
+      </div>
+    );
   return (
     <div className={`app-shell${storyPage ? " story-page-shell" : ""}${menuPage ? " menu-page-shell" : ""}`}>
       <Link className="skip-link" href="#main">

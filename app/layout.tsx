@@ -7,6 +7,7 @@ import "./footer.css";
 import "./story.css";
 import "./menu.css";
 import "./auth.css";
+import "./reserve.css";
 
 export const metadata: Metadata = {
   title: "MicroEChef — Kitchen & Good Company",

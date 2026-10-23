@@ -60,7 +60,15 @@ export default function AuthScreen({ stage }: { stage: AuthStage }) {
   const go = (next: AuthStage, notice: string) => { clearSecrets(); updateAuthDraft({ notice }); router.push(route(next)); };
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setStatus(""); const form = new FormData(event.currentTarget);
-    if (stage === "login") { if (checkPhone() && checkPassword(form, false)) { clearSecrets(); setStatus(unavailable.login); } return; }
+    if (stage === "login") {
+      // Sign-in isn't connected yet, so the preview lets any phone + password through to /reserve.
+      const password = String(form.get("password") || "");
+      if (!draft.phone.trim()) { fail("phone", "Enter your phone number."); return; }
+      if (!password) { fail("password", "Enter your password."); return; }
+      clearSecrets();
+      router.push("/reserve");
+      return;
+    }
     if (stage === "signup") {
       if (draft.name.trim().length < 2) { fail("full-name", "Please enter your name."); return; }
       if (!checkPhone() || !checkPassword(form, true)) return;
@@ -104,6 +112,7 @@ export default function AuthScreen({ stage }: { stage: AuthStage }) {
     {(stage === "login" || stage === "signup") && social}
     {otp && <div className="au-resend"><span>{seconds ? `Resend in 00:${String(seconds).padStart(2, "0")}` : "Didn’t get a code?"}</span><button type="button" disabled={seconds > 0} onClick={() => { setSeconds(30); setStatus(unavailable.sms); }}>Resend code</button></div>}
     {notice && <p className="au-status" role="alert">{notice}</p>}
+    {stage === "login" && <p className="au-guest">Accounts aren’t connected yet. Enter any phone number and password to reach the reservation page — nothing is checked or saved. <Link href="/reserve">Skip to reservations</Link></p>}
     {stage === "login" ? switchLine("First time here?", "Create an account", "signup") : stage === "signup" ? switchLine("Already part of the table?", "Log in", "login") : switchLine("Ready to try again?", "Back to login", "login")}
   </section></main><footer className="au-footer"><span>Good food. Good company.</span><span className="au-powered">powered by microechef</span></footer><dialog ref={dialog} className="au-dialog" aria-labelledby="legal-title" onClose={() => setLegal(null)}><button type="button" className="au-close" aria-label="Close information" onClick={() => dialog.current?.close()}>×</button><h2 id="legal-title">{legal === "terms" ? "A thoughtful welcome." : "Your details, with care."}</h2><p>{legal === "terms" ? "Account registration and reservations are not connected yet. Final terms must be provided by the restaurant before account creation is enabled. No account or booking is created by these forms." : "These forms do not send data to a server or save it in cookies or local storage. Name and phone stay in this tab’s memory for navigation. Passwords are cleared when leaving their screen. No real login, SMS verification or Google account access is connected. The restaurant’s final privacy policy must be confirmed before launch."}</p><button type="button" className="au-primary" onClick={() => dialog.current?.close()}>Got it <Arrow /></button></dialog></div>;
 }

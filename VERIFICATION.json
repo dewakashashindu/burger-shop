@@ -1,5 +1,5 @@
 {
-  "version": "v9 \u2014 clean auth UI integrated with approved Home, Story and Sri Lankan menu",
+  "version": "v10 \u2014 reservations + online order integrated (table form, rooms, cart)",
   "date": "2026-10-22",
   "framework": "Original burger-shop: Next.js 16.4.2 / React 19 / Tailwind CSS 4",
   "status": "PASS",
@@ -184,8 +184,10 @@
   "offlinePreviews": [
     "MicroEChef-Auth-Preview.html",
     "MicroEChef-Menu-Preview.html",
+    "MicroEChef-Order-Preview.html",
+    "MicroEChef-Our-Story-Preview.html",
     "MicroEChef-Preview.html",
-    "MicroEChef-Our-Story-Preview.html"
+    "MicroEChef-Reserve-Preview.html"
   ],
   "uiCleanup": {
     "removed": [
@@ -257,6 +259,35 @@
       "Six routes at nine widths without overflow",
       "No-JS and reduced-motion readable",
       "No form POSTs, page errors or fake success"
+    ],
+    "widths": [
+      1920,
+      1440,
+      1024,
+      900,
+      768,
+      767,
+      390,
+      360,
+      320
+    ]
+  },
+  "reservationsAndOrder": {
+    "passed": true,
+    "routes": [
+      "/reserve",
+      "/order"
+    ],
+    "checks": [
+      "Login \u2192 Continue as a guest \u2192 reservation chooser",
+      "Table booking is a single form (no wizard, no food add-ons, no packages, no floor plan)",
+      "Local and foreign guests entered separately with free numeric counts and a live total",
+      "Validation for name, phone, date, time and at least one guest; confirmation screen",
+      "Room categories, stay packages with LKR/USD, photo gallery, date range, NIC/passport, package total",
+      "Order menu, add-to-cart flight animation, cart quantities/removal, delivery or pickup checkout, confirmation",
+      "Nine widths 320\u20131920 with no horizontal overflow",
+      "Reduced-motion and no-JavaScript readable",
+      "No POST requests, page errors, accounts, payments or submissions"
     ],
     "widths": [
       1920,
