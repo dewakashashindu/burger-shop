@@ -10,9 +10,9 @@ import "./auth.css";
 import "./reserve.css";
 
 export const metadata: Metadata = {
-  title: "MicroEChef — Kitchen & Good Company",
+  title: "Mila Mirissa — Kitchen & Good Company",
   description:
-    "A little kitchen, a warm welcome, and your kind of food. Explore the MicroEChef kitchen and find your next favourite table.",
+    "A little kitchen, a warm welcome, and your kind of food. Explore the Mila Mirissa kitchen and find your next favourite table.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

@@ -188,16 +188,30 @@
 }
 .brand {
   display: inline-flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
+  gap: 11px;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 32px;
-  letter-spacing: -1.6px;
+  font-size: 29px;
+  letter-spacing: -1.4px;
   line-height: 1;
   white-space: nowrap;
 }
-.brand span {
-  margin-top: 9px;
+.brand__logo {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px #35433314;
+}
+.brand__text {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.brand small {
+  margin-top: 8px;
   font-family: "Open Sauce One", sans-serif;
   text-transform: uppercase;
   font-size: 7px;
@@ -781,7 +795,7 @@ button.circle-button:hover {
 .footer .brand {
   font-size: 24px;
 }
-.footer .brand span {
+.footer .brand small {
   font-size: 5px;
   letter-spacing: 1.3px;
   margin-top: 7px;
@@ -1086,12 +1100,17 @@ button.circle-button:hover {
     padding: 17px 22px;
   }
   .brand {
-    font-size: 28px;
+    font-size: 24px;
+    gap: 9px;
   }
-  .brand span {
+  .brand__logo {
+    width: 33px;
+    height: 33px;
+  }
+  .brand small {
     font-size: 6px;
     letter-spacing: 1.2px;
-    margin-top: 7px;
+    margin-top: 6px;
   }
   .desktop-nav {
     display: none;

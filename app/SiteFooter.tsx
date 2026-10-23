@@ -77,7 +77,7 @@ export default function SiteFooter() {
 
   return (
     <>
-      <footer id="footer" role="contentinfo" className="dining-footer site-footer" aria-label="MicroEChef footer">
+      <footer id="footer" role="contentinfo" className="dining-footer site-footer" aria-label="Mila Mirissa footer">
         <div className="dining-footer__stage" aria-hidden="true">
           <div className="dining-footer__ambience">
             <Image
@@ -94,9 +94,11 @@ export default function SiteFooter() {
         <div className="dining-footer__fog" aria-hidden="true" />
         <div className="dining-footer__content">
           <div className="dining-brand">
-            <Link className="dining-brand__logo" href="/" aria-label="MicroEChef home">
-              <span className="dining-brand__mark" aria-hidden="true">m</span>
-              <span>MicroEChef</span>
+            <Link className="dining-brand__logo" href="/" aria-label="Mila Mirissa home">
+              <span className="dining-brand__mark dining-brand__mark--photo" aria-hidden="true">
+                <Image src="/images/mila-mirissa-logo-sm.png" alt="" width={64} height={64} />
+              </span>
+              <span>Mila Mirissa</span>
             </Link>
             <h2>Good food. Good company.</h2>
             <p className="dining-brand__text">
@@ -106,7 +108,7 @@ export default function SiteFooter() {
             <Link className="dining-brand__cta" href="/auth/login">
               Find your table <Arrow />
             </Link>
-            <p className="dining-brand__copyright">© {year} MicroEChef. Freshly made. Happily shared.</p>
+            <p className="dining-brand__copyright">© {year} Mila Mirissa. Freshly made. Happily shared.</p>
             <p className="dining-brand__care">
               <Sprig /> Made with care. Meant to be shared.
             </p>

@@ -76,18 +76,28 @@
 @media(max-width:359px){.wm-wrap{width:calc(100% - 32px)}.wm-hero h1{font-size:58px}.wm-hero-media{height:300px}.wm-hero-label b{font-size:22px}.wm-dish-grid{gap:15px 10px}.wm-dish-photo{height:140px}.wm-dish-info{padding:14px 11px}.wm-dish-info h3{font-size:23px}.wm-dish-info>p{font-size:9px}.wm-dish-bottom{font-size:7px}.wm-dish-num{font-size:6px}.wm-catalog-top h2{font-size:28px}}
 @media(prefers-reduced-motion:reduce){.warm-menu *, .warm-menu *::before,.warm-menu *::after{transition:none!important;animation:none!important}.wm-hero-media:hover>img,.wm-dish-card:hover .wm-dish-photo img{transform:none}}
 
-/* Sub categories (L1 groups) — a quieter second row under the top tabs. */
-.wm-subcat-panel{display:flex;align-items:center;gap:31px;border-bottom:1px solid #3543331f;padding:0 0 14px;margin-top:-1px}
-.wm-subcat-panel>p{font-size:7px;letter-spacing:1.4px;white-space:nowrap;flex-shrink:0;margin:0;color:#8a927b;display:block}
-.wm-subcat-list{display:flex;gap:7px;min-width:0;overflow-x:auto;scrollbar-width:thin;scrollbar-color:#a0aa92 transparent;padding:3px 3px 7px;margin-bottom:-4px}
-.wm-subcat-list button{display:flex;align-items:center;gap:9px;flex-shrink:0;border:1px solid transparent;background:#efeade;color:#5f6b51;border-radius:30px;font-size:9.5px;line-height:1.4;padding:8px 14px;white-space:nowrap;transition:background .2s,color .2s,border-color .2s}
-.wm-subcat-list button>span{font-size:7.5px;opacity:.55;font-variant-numeric:tabular-nums}
-.wm-subcat-list button[aria-pressed="true"]{background:#e2e7d7;border-color:#bcc6a8;color:#354333}
-.wm-subcat-list button:hover{border-color:#8d9c7b;color:#354333}
-.wm-subcat-list button:focus-visible{outline-offset:1px}
+/* Sub category card — the same card shape as a dish, only a little different.
+   Used for L1Des (KIDS MENU, LUNCH & DINNER) and L2Des (RICE, CURRY) groups. */
+.wm-crumbs{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:9px;color:#8a927b;padding:16px 0 0}
+.wm-crumbs button{border:0;background:none;padding:0;font:inherit;color:#4f5d45;border-bottom:1px solid #35433355;cursor:pointer}
+.wm-crumbs button:hover{color:#354333;border-bottom-color:#354333}
+.wm-crumbs span{color:#9aa38d}
+.is-coll{cursor:pointer;background:#f1ebde;border-color:#35433333}
+.is-coll:hover{border-color:#8d9c7b;box-shadow:0 12px 26px #35433314}
+.is-coll:focus-visible{outline:2px solid #718655;outline-offset:4px}
+.is-coll .wm-dish-photo img{filter:saturate(.72) contrast(1.02)}
+.is-coll .wm-dish-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(155deg,#3543330f 0%,#3543333d 100%);mix-blend-mode:multiply;pointer-events:none}
+.is-coll .wm-dish-num{background:#354333;color:#f5f1e9;font-size:7px;letter-spacing:1.1px;text-transform:uppercase;padding:7px 11px}
+.is-coll .wm-dish-info{background:linear-gradient(180deg,#f4eee2,#efe8da)}
+.is-coll .wm-dish-info>.eyebrow{color:#718655;letter-spacing:1.7px;font-weight:600}
+.is-coll .coll-meta{color:#5f6b51;font-size:8.5px;letter-spacing:.25px;line-height:1.5}
+.is-coll .wm-dish-open{background:#354333;border-color:#354333;color:#f5f1e9}
+.is-coll .wm-dish-open svg{width:13px;height:13px}
+.is-coll::after{content:"";position:absolute;left:9px;right:9px;bottom:-6px;height:6px;border:1px solid #35433326;border-top:0;border-radius:0 0 5px 5px;background:#e8e0d0;pointer-events:none}
 @media(max-width:767px){
-  .wm-subcat-panel{display:block;padding-bottom:10px;gap:0}
-  .wm-subcat-panel>p{display:none}
-  .wm-subcat-list{gap:6px}
-  .wm-subcat-list button{font-size:9px;padding:7px 12px}
+  .wm-crumbs{font-size:8.5px;padding-top:13px}
+  .is-coll::after{left:6px;right:6px;bottom:-4px;height:4px}
+  .is-coll .wm-dish-num{font-size:6px;letter-spacing:.8px;padding:6px 8px}
+  .is-coll .coll-meta{font-size:7.5px}
+  .is-coll .wm-dish-open{width:20px;height:20px}
 }

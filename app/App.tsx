@@ -25,7 +25,7 @@ import {
 // Owner setup: replace the menu below and these details before going live.
 // Leave unknown values empty: the website will never invent contact information.
 const RESTAURANT = {
-  name: "MicroEChef",
+  name: "Mila Mirissa",
   email: "",
   phone: "",
   address: "",
@@ -586,14 +586,14 @@ function BookingForm() {
     setSaved(false);
     setError("");
   };
-  const summary = `MicroEChef — reservation request draft\n\nName: ${form.name}\nEmail: ${form.email}\nDate: ${form.date}\nPreferred time: ${form.time}\nGuests: ${form.guests}\nNotes: ${form.notes || "None"}\n\nThis is a draft only. It has NOT been sent, and no table has been reserved. Please contact the restaurant to confirm availability.\n`;
+  const summary = `Mila Mirissa — reservation request draft\n\nName: ${form.name}\nEmail: ${form.email}\nDate: ${form.date}\nPreferred time: ${form.time}\nGuests: ${form.guests}\nNotes: ${form.notes || "None"}\n\nThis is a draft only. It has NOT been sent, and no table has been reserved. Please contact the restaurant to confirm availability.\n`;
   const download = () => {
     const url = URL.createObjectURL(
       new Blob([summary], { type: "text/plain" }),
     );
     const a = document.createElement("a");
     a.href = url;
-    a.download = "MicroEChef-reservation-draft.txt";
+    a.download = "mila-mirissa-reservation-draft.txt";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
@@ -799,7 +799,7 @@ function OurStoryContent({
       <div className="studio motion-studio">
         <div className="motion-brand">
           <b>OUR STORY</b>
-          <small>MicroEChef · Place &amp; Visit</small>
+          <small>Mila Mirissa · Place &amp; Visit</small>
         </div>
         <div className="motion-progress" aria-hidden="true" />
       </div>
@@ -851,7 +851,7 @@ function OurStoryContent({
                   className="intro-piece"
                   style={{ "--entry-delay": "460ms" } as CSSProperties}
                 >
-                  {"Get to know MicroEChef."}
+                  {"Get to know Mila Mirissa."}
                   <br />
                   {"Then make yourself at home."}
                 </p>
@@ -953,7 +953,7 @@ function OurStoryContent({
             </p>
             <p>
               {
-                "MicroEChef is imagined as your neighbourhood pause. Pull up a chair for a slow lunch, a favourite bite, or a conversation that lasts a little longer. The idea is simple: good food should bring people together."
+                "Mila Mirissa is imagined as your neighbourhood pause. Pull up a chair for a slow lunch, a favourite bite, or a conversation that lasts a little longer. The idea is simple: good food should bring people together."
               }
             </p>
             <div className="values">
@@ -1155,7 +1155,7 @@ function OurStoryContent({
           <div className="chef-art">
             <figure className="chef-photo">
               <Image
-                alt="AI-generated fictional chef portrait, not the actual MicroEChef chef"
+                alt="AI-generated fictional chef portrait, not the actual Mila Mirissa chef"
                 loading="lazy"
                 src="/images/chef-portrait.jpg"
                 width="900"
@@ -1537,13 +1537,14 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
         <Link
           href={sectionHref("home")}
           className="brand"
-          aria-label="MicroEChef home"
+          aria-label="Mila Mirissa home"
           onClick={(event) => {
             setMobileMenu(false);
             followSection(event, "home");
           }}
         >
-          MicroEChef<span>kitchen & good company</span>
+          <Image className="brand__logo" src="/images/mila-mirissa-logo-sm.png" alt="" width={96} height={96} aria-hidden="true" priority />
+          <span className="brand__text">Mila Mirissa<small>kitchen &amp; good company</small></span>
         </Link>
         <nav className="desktop-nav" aria-label="Main navigation">
           {navLinks.slice(1).map((link) => (
@@ -1696,7 +1697,7 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
                     </h1>
                     <p className="hero-description">
                       Pull up a chair. Settle into something delicious.
-                      <br className="hidden md:block" /> At MicroEChef, there’s
+                      <br className="hidden md:block" /> At Mila Mirissa, there’s
                       always room for good food
                       <br className="hidden md:block" /> and even better
                       company.
@@ -1939,7 +1940,7 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
                         height={768}
                         sizes="(max-width: 767px) 100vw, 50vw"
                         src={IMAGE.restaurant}
-                        alt="An inviting table in the MicroEChef restaurant concept"
+                        alt="An inviting table in the Mila Mirissa restaurant concept"
                         loading="lazy"
                       />
                       <div className="story-photo-top">
@@ -1991,7 +1992,7 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
           id="footer"
           role="contentinfo"
           className="dining-footer site-footer"
-          aria-label="MicroEChef footer"
+          aria-label="Mila Mirissa footer"
         >
           <div className="dining-footer__stage" aria-hidden="true">
             <div className="dining-footer__ambience">
@@ -2016,13 +2017,13 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
               <Link
                 className="dining-brand__logo"
                 href={sectionHref("home")}
-                aria-label="MicroEChef home"
+                aria-label="Mila Mirissa home"
                 onClick={(event) => followSection(event, "home")}
               >
-                <span className="dining-brand__mark" aria-hidden="true">
-                  m
+                <span className="dining-brand__mark dining-brand__mark--photo" aria-hidden="true">
+                  <Image src="/images/mila-mirissa-logo-sm.png" alt="" width={64} height={64} />
                 </span>
-                <span>MicroEChef</span>
+                <span>Mila Mirissa</span>
               </Link>
               <h2>Good food. Good company.</h2>
               <p className="dining-brand__text">
@@ -2037,7 +2038,7 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
                 Find your table <Arrow />
               </button>
               <p className="dining-brand__copyright">
-                © {copyrightYear} MicroEChef. Freshly made. Happily shared.
+                © {copyrightYear} Mila Mirissa. Freshly made. Happily shared.
               </p>
               <p className="dining-brand__care">
                 <Sprig /> Made with care. Meant to be shared.
@@ -2269,7 +2270,7 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
           />
           <p className="dialog-intro">The simple things, done with care.</p>
           <p className="story-text">
-            MicroEChef is imagined as your neighbourhood pause: a place for
+            Mila Mirissa is imagined as your neighbourhood pause: a place for
             familiar flavours, thoughtful details and a meal that feels like a
             little occasion.
           </p>

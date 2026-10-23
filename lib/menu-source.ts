@@ -107,7 +107,7 @@ export function mapRows(rows: DbMenuRow[]): MenuItem[] {
         description,
         price: Number(row.SalesPrice) || 0,
         image: Number(row.HasPicture) ? `/api/menu/image/${encodeURIComponent(id)}` : FALLBACK_IMAGE,
-        alt: description || name || "Dish from the MicroEChef kitchen",
+        alt: description || name || "Dish from the Mila Mirissa kitchen",
       } satisfies MenuItem;
     })
     .filter((item): item is MenuItem => item !== null);
