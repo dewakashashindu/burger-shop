@@ -224,7 +224,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
             group: item.group || "",
             sub: item.subGroup || "",
           }))
-        : DISHES.map((dish) => ({ ...dish, category: "Food", group: dish.tag, sub: "" })),
+        : DISHES.map((dish) => ({ ...dish, category: "Food", group: "", sub: "" })),
     [liveMenu],
   );
   const [orderCat, setOrderCat] = useState("All dishes");
@@ -801,12 +801,15 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
           <button type="button" aria-pressed={order.method === "pickup"} onClick={() => setOrder({ ...order, method: "pickup" })}>Pickup</button>
         </div>
       </div>
-      <div className="order-cats" role="group" aria-label="Filter the order menu by category">
-        {orderCats.map((c) => (
-          <button key={c} type="button" aria-pressed={activeCat === c} onClick={() => { setOrderCat(c); setOrderGroup(""); setOrderSub(""); }}>
-            {c}<span>{c === "All dishes" ? dishes.length : dishes.filter((d) => (d.category || "Food") === c).length}</span>
-          </button>
-        ))}
+      <div className="wm-category-panel">
+        <p className="eyebrow">Explore the menu</p>
+        <div className="wm-category-list" role="group" aria-label="Filter the order menu by category">
+          {orderCats.map((c) => (
+            <button key={c} type="button" aria-pressed={activeCat === c} onClick={() => { setOrderCat(c); setOrderGroup(""); setOrderSub(""); }}>
+              {c}<span>{c === "All dishes" ? dishes.length : dishes.filter((d) => (d.category || "Food") === c).length}</span>
+            </button>
+          ))}
+        </div>
       </div>
       {activeCat !== "All dishes" && (
         <div className="order-path" aria-label="Menu path">

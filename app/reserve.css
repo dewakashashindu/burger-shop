@@ -347,3 +347,26 @@
 .reserve-page-shell .dining-footer .dining-brand__cta svg{width:13px;height:13px;flex:none}
 .reserve-page-shell .dining-brand__logo{color:#344131}
 .reserve-page-shell .dining-col a,.reserve-page-shell .dining-col button{color:inherit;font-size:13.5px;line-height:1.5;border:0;background:transparent}
+
+/* ── Online order: the same three level menu as the menu page ─────────────── */
+.order-path{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:9px;color:#8a927b;margin-top:14px}
+.order-path button{border:0;background:none;padding:0;font:inherit;font-size:9px;color:#4f5d45;border-bottom:1px solid #35433355;cursor:pointer}
+.order-path button:hover{color:#354333;border-bottom-color:#354333}
+.order-path span{color:#9aa38d}
+.order-path i{font-style:normal;color:#b3b8a8}
+.order-status{margin:10px 0 18px;color:#7a826f}
+.dish.is-coll{background:#f1ebde;border-color:#35433333;cursor:pointer}
+.dish.is-coll .ph img{filter:saturate(.72) contrast(1.02)}
+.dish.is-coll .ph::after{content:"";position:absolute;inset:0;background:linear-gradient(155deg,#3543330f 0%,#3543333d 100%);mix-blend-mode:multiply;pointer-events:none}
+.dish.is-coll .tag{background:#354333;color:#f5f1e9;letter-spacing:1px}
+.dish.is-coll .body{background:linear-gradient(180deg,#f4eee2,#efe8da)}
+.dish.is-coll .body .eyebrow{color:#718655;letter-spacing:1.7px;font-weight:600;font-size:7px}
+.dish.is-coll h3{font:26px/1.15 Georgia,serif;letter-spacing:-.6px;margin:6px 0 0;font-weight:400}
+.dish.is-coll p{font-size:11px;line-height:1.7;color:#818974;margin:0}
+.dish.is-coll .micro{color:#5f6b51;font-size:8.5px;letter-spacing:.2px}
+.dish.is-coll .foot{border-top:1px solid #3543331a;padding-top:11px}
+.dish.is-coll .coll-open{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#354333;color:#f5f1e9;flex-shrink:0}
+.dish.is-coll .coll-open svg{width:13px;height:13px}
+.dish.is-coll::after{content:"";position:absolute;left:9px;right:9px;bottom:-5px;height:5px;border:1px solid #35433326;border-top:0;border-radius:0 0 5px 5px;background:#e8e0d0;pointer-events:none}
+.dish.is-coll:hover{border-color:#8d9c7b;box-shadow:0 12px 26px #35433314}
+@media(max-width:767px){.dish.is-coll h3{font-size:22px}.order-status{font-size:8px}}
