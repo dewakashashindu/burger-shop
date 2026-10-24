@@ -8,6 +8,7 @@ import "./story.css";
 import "./menu.css";
 import "./auth.css";
 import "./reserve.css";
+import "./motion-site.css";
 
 export const metadata: Metadata = {
   title: "Mila Mirissa — Kitchen & Good Company",

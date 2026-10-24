@@ -11,6 +11,7 @@ import { MENU_CATEGORIES, type MenuCategory, type MenuDish, type MenuFilter } fr
 import { mountStoryMotion } from "./story-motion";
 import OrderPill from "./OrderPill";
 import SignInFab from "./SignInFab";
+import MotionBoot from "./MotionBoot";
 import {
   Suspense,
   useCallback,
@@ -1526,6 +1527,7 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
   if (authPage)
     return (
       <div className="app-shell auth-page-shell">
+        <MotionBoot />
         <Suspense fallback={null}>
           <AuthScreen key={authPage} stage={authPage} />
         </Suspense>
@@ -1534,6 +1536,7 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
   if (reservePage || orderPage)
     return (
       <div className={`app-shell reserve-page-shell${orderPage ? " order-page-shell" : ""}`}>
+        <MotionBoot />
         <BookingFlow key={orderPage ? "order" : "reserve"} start={orderPage ? "order" : startView === "reserve" ? "reserve" : "choose"} />
         <SiteFooter />
         <SignInFab />
@@ -1541,6 +1544,7 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
     );
   return (
     <div className={`app-shell${storyPage ? " story-page-shell" : ""}${menuPage ? " menu-page-shell" : ""}`}>
+      <MotionBoot />
       <OrderPill />
       <SignInFab stacked />
       <Link className="skip-link" href="#main">

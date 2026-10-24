@@ -184,12 +184,12 @@ export function readWebOrderInput(raw: unknown): WebOrderInput | string {
   };
 }
 
-type TxRequest = {
+export type TxRequest = {
   input(name: string, value: unknown): TxRequest;
   query<T>(statement: string): Promise<{ recordset?: T[]; rowsAffected?: number[] }>;
 };
 
-type Tx = {
+export type Tx = {
   begin(): Promise<unknown>;
   commit(): Promise<unknown>;
   rollback(): Promise<unknown>;
@@ -200,7 +200,7 @@ type Tx = {
 export type SerialsShape = { date: boolean; loc: boolean };
 let shapeCache: SerialsShape | null = null;
 
-async function readSerialsShape(pool: { request(): TxRequest }): Promise<SerialsShape> {
+export async function readSerialsShape(pool: { request(): TxRequest }): Promise<SerialsShape> {
   if (shapeCache) return shapeCache;
   const found = await pool
     .request()

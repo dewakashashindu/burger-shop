@@ -1,0 +1,186 @@
+/* Site-wide motion — one curve, short distances, nothing that performs.
+   Every rule here is inside a no-preference block or is switched off again at
+   the bottom, so a guest who asks for less motion gets a still page. */
+
+:root {
+  --ms-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes msRise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes msPhoto {
+  from {
+    opacity: 0;
+    transform: scale(1.03);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes msPage {
+  from {
+    opacity: 0.001;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes msSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes msPop {
+  0% {
+    transform: scale(1);
+  }
+  38% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* 1 — the home hero arrives in one breath */
+  .hero-copy > .eyebrow {
+    animation: msRise 0.58s var(--ms-ease) both;
+  }
+  .hero-copy > h1 {
+    animation: msRise 0.78s var(--ms-ease) 0.07s both;
+  }
+  .hero-copy .hero-description {
+    animation: msRise 0.68s var(--ms-ease) 0.18s both;
+  }
+  .hero-copy .hero-actions {
+    animation: msRise 0.68s var(--ms-ease) 0.27s both;
+  }
+  .hero-copy .hero-footnote {
+    animation: msRise 0.68s var(--ms-ease) 0.36s both;
+  }
+
+  /* 2 — blocks that wait for the scroll (class is added by MotionBoot only when
+         JavaScript runs, so the server-rendered page is never hidden) */
+  .ms-rv {
+    opacity: 0;
+    transform: translateY(14px);
+    transition:
+      opacity 0.55s var(--ms-ease) var(--ms-d, 0ms),
+      transform 0.55s var(--ms-ease) var(--ms-d, 0ms);
+    will-change: opacity, transform;
+  }
+  .ms-rv.ms-in {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* 3 — a photograph settles instead of appearing */
+  .ms-img {
+    animation: msPhoto 0.62s var(--ms-ease) backwards;
+  }
+
+  /* 4 — the grid cross-fades when live dishes replace the built-in ones */
+  .ms-fresh > * {
+    animation: msRise 0.5s var(--ms-ease) backwards;
+  }
+  .ms-fresh > *:nth-child(2) {
+    animation-delay: 0.05s;
+  }
+  .ms-fresh > *:nth-child(3) {
+    animation-delay: 0.1s;
+  }
+  .ms-fresh > *:nth-child(4) {
+    animation-delay: 0.14s;
+  }
+  .ms-fresh > *:nth-child(n + 5) {
+    animation-delay: 0.18s;
+  }
+
+  /* 7 — between pages: the content lifts in, fixed elements never move */
+  .ms-page {
+    animation: msPage 0.3s var(--ms-ease) backwards;
+  }
+}
+
+/* 5 — a button that is working says so without changing width */
+.btn[data-busy="true"] {
+  position: relative;
+  cursor: progress;
+}
+.btn[data-busy="true"] > .btn-label,
+.btn[data-busy="true"] > svg {
+  opacity: 0;
+}
+.btn-spin {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s var(--ms-ease);
+}
+.btn[data-busy="true"] .btn-spin {
+  opacity: 1;
+}
+.btn-spin i {
+  display: block;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1.6px solid rgba(253, 247, 238, 0.34);
+  border-top-color: #fdf7ee;
+  animation: msSpin 0.7s linear infinite;
+}
+.btn.light .btn-spin i,
+.btn.btn-plain .btn-spin i {
+  border-color: rgba(63, 51, 37, 0.24);
+  border-top-color: #3f3325;
+}
+.btn > .btn-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity 0.18s var(--ms-ease);
+}
+.btn > svg {
+  transition: opacity 0.18s var(--ms-ease);
+}
+
+/* 6 — a dish landing in the cart is one soft press */
+.cart-count.ms-pop {
+  animation: msPop 0.42s var(--ms-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-rv,
+  .ms-rv.ms-in {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .ms-img,
+  .ms-fresh > *,
+  .ms-page,
+  .hero-copy > .eyebrow,
+  .hero-copy > h1,
+  .hero-copy .hero-description,
+  .hero-copy .hero-actions,
+  .hero-copy .hero-footnote {
+    animation: none !important;
+  }
+  .btn-spin i,
+  .cart-count.ms-pop {
+    animation: none !important;
+  }
+}

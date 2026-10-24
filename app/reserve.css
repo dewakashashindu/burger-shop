@@ -424,3 +424,14 @@
 .reserve-page-shell .signin-hint{display:flex;align-items:center;gap:9px;margin-top:18px;font-size:11.5px;line-height:1.7;color:#8a7763}
 .reserve-page-shell .signin-hint svg{width:14px;height:14px!important;flex:none;color:#a08668}
 @media(max-width:767px){.reserve-page-shell .signin-hint{font-size:11px}}
+
+/* the period picker: two dropdowns and a dash between them */
+.reserve-page-shell .period-row{display:flex;align-items:center;gap:8px}
+.reserve-page-shell .period-row select{flex:1 1 0;min-width:0}
+.reserve-page-shell .period-dash{color:#a08668;font-size:12px;flex:none}
+.reserve-page-shell .period-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.reserve-page-shell .period-chips .chip{border:1px solid var(--line);background:#fffdf9;border-radius:999px;padding:6px 11px;font-size:10.5px;color:#7b6b59;transition:background .2s ease,border-color .2s ease,color .2s ease}
+.reserve-page-shell .period-chips .chip:hover{background:#f6efe3}
+.reserve-page-shell .period-chips .chip.is-on{background:#7a5634;border-color:#7a5634;color:#fdf7ee}
+.reserve-page-shell .save-error{margin-top:14px}
+@media(max-width:767px){.reserve-page-shell .period-row{flex-wrap:wrap}.reserve-page-shell .period-row select{flex:1 1 45%}}

@@ -44,8 +44,31 @@ const prettyTime = (hhmm: string) => {
   const hour = h % 12 === 0 ? 12 : h % 12;
   return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
 };
-const TIMES = ["12:00", "12:30", "13:00", "13:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00"];
-const SEATING = ["No preference", "Window", "Garden terrace", "Centre of the room", "Quiet corner"];
+// A reservation is a period, the same pair of columns the POS keeps
+// (Tbl_TabelReservation.TimeFrom / TimeTo). Lunch and dinner windows are offered
+// from a half-hour grid between opening and closing.
+const PERIOD_START = Array.from({ length: 22 }, (_, i) => {
+  const minutes = 11 * 60 + i * 30;
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+});
+// 11:00 → 21:30; a booking may not run past 22:30.
+const PERIOD_END = Array.from({ length: 24 }, (_, i) => {
+  const minutes = 11 * 60 + (i + 1) * 30;
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+});
+const PERIOD_LENGTHS = [
+  { id: "90", label: "1½ hours" },
+  { id: "120", label: "2 hours" },
+  { id: "150", label: "2½ hours" },
+  { id: "180", label: "3 hours" },
+];
+/** Adds a length in minutes to an HH:mm start, clamped to 23:59. */
+const addMinutes = (hhmm: string, minutes: number) => {
+  if (!hhmm) return "";
+  const [h, m] = hhmm.split(":").map(Number);
+  const total = Math.min(23 * 60 + 59, h * 60 + m + minutes);
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+};
 // Reading the clock is impure, so it lives outside the component: render stays pure,
 // and only the click handlers ever ask for the time.
 const nowMs = () => Date.now();
@@ -256,6 +279,39 @@ function nationalPhone(raw: string) {
   return digits;
 }
 
+/**
+ * The floor plan behind the two dropdowns. It is read from /api/tables
+ * (Tbl_TableGroup + Tbl_Tables). Until the restaurant database answers, the
+ * form keeps the layout that was handed over with the brief.
+ */
+export type FloorGroup = { id: string; name: string; tableCount: number };
+export type FloorTable = { no: string; group: string; groupName: string; vacant: boolean | null; listingOrder: number };
+type Floor = { groups: FloorGroup[]; tables: FloorTable[]; locations: { code: string; name: string }[] };
+
+const BUILT_IN_FLOOR: Floor = {
+  groups: [
+    { id: "001", name: "A. Ground Floor", tableCount: 5 },
+    { id: "002", name: "B. First Floor", tableCount: 4 },
+  ],
+  tables: [
+    { no: "T-01", group: "001", groupName: "A. Ground Floor", vacant: true, listingOrder: 10 },
+    { no: "T-02", group: "001", groupName: "A. Ground Floor", vacant: true, listingOrder: 20 },
+    { no: "T-03", group: "001", groupName: "A. Ground Floor", vacant: true, listingOrder: 30 },
+    { no: "T-04", group: "001", groupName: "A. Ground Floor", vacant: true, listingOrder: 40 },
+    { no: "T-05", group: "001", groupName: "A. Ground Floor", vacant: true, listingOrder: 50 },
+    { no: "T-11", group: "002", groupName: "B. First Floor", vacant: true, listingOrder: 10 },
+    { no: "T-12", group: "002", groupName: "B. First Floor", vacant: true, listingOrder: 20 },
+    { no: "T-13", group: "002", groupName: "B. First Floor", vacant: true, listingOrder: 30 },
+    { no: "T-14", group: "002", groupName: "B. First Floor", vacant: true, listingOrder: 40 },
+  ],
+  locations: [{ code: "MR", name: "Mirissa" }],
+};
+
+const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+/** A table belongs to a group when its POS value matches either the id or the name. */
+const inGroup = (table: FloorTable, group: FloorGroup) =>
+  same(table.group, group.id) || same(table.group, group.name) || same(table.groupName, group.name);
+
 export default function BookingFlow({ start = "choose" }: { start?: "choose" | "table" | "rooms" | "order" | "reserve" }) {
   const [view, setView] = useState<View>(start === "order" ? "order" : start === "reserve" ? "reserve" : "choose");
   const [kind, setKind] = useState<Kind>("table");
@@ -277,12 +333,25 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     phone: "",
     local: "2",
     foreign: "0",
-    seating: SEATING[0],
     date: "",
-    time: "",
+    // The period the table is held for, plus the table itself.
+    from: "",
+    to: "",
+    group: "",
+    tableNo: "",
     note: "",
   });
+  const [periodLength, setPeriodLength] = useState("120");
+  const [floor, setFloor] = useState<Floor>(BUILT_IN_FLOOR);
+  const [floorLive, setFloorLive] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const guests = Math.max(0, Number(t.local) || 0) + Math.max(0, Number(t.foreign) || 0);
+  const activeGroup = floor.groups.find((g) => g.id === t.group || g.name === t.group) ?? null;
+  const groupTables = activeGroup
+    ? floor.tables.filter((table) => inGroup(table, activeGroup)).sort((a, b) => a.listingOrder - b.listingOrder || a.no.localeCompare(b.no))
+    : [];
+  const chosenTable = floor.tables.find((table) => table.no === t.tableNo) ?? null;
 
   const [r, setR] = useState({
     cat: "all" as "all" | Room["cat"],
@@ -325,10 +394,49 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     pickupLoc: "",
   });
 
+  // The two dropdowns are filled from the POS floor plan (Tbl_TableGroup +
+  // Tbl_Tables). The built-in plan stays in place until that answers.
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/tables")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: null | { ok?: boolean; groups?: FloorGroup[]; tables?: FloorTable[]; locations?: { code: string; name: string }[] }) => {
+        if (!alive || !data?.ok || !data.groups?.length) return;
+        setFloor({
+          groups: data.groups,
+          tables: data.tables ?? [],
+          locations: data.locations?.length ? data.locations : BUILT_IN_FLOOR.locations,
+        });
+        setFloorLive(true);
+      })
+      .catch(() => {
+        /* the built-in plan stays — the form still works */
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   const liveLocations = useLocations();
   const locations = liveLocations ?? FALLBACK_LOCATIONS;
   const [cart, setCart] = useState<Record<string, number>>({});
   const [placing, setPlacing] = useState(false);
+
+  // A guest who has already signed in should not type their own name and number
+  // again — the fields are filled the moment the tab knows who they are, and
+  // anything they have typed themselves is never overwritten.
+  useEffect(() => {
+    if (!guest) return;
+    const phone = guest.phone.startsWith("0") ? guest.phone : `0${guest.phone.replace(/^\+?94/, "")}`;
+    const later = guest.name;
+    // Deferred one tick so the first paint matches the server exactly.
+    const id = window.setTimeout(() => {
+      setT((old) => ({ ...old, name: old.name || later || "", phone: old.phone || phone }));
+      setOrder((old) => ({ ...old, name: old.name || later || "", phone: old.phone || phone }));
+      setR((old) => ({ ...old, name: old.name || later || "", phone: old.phone || phone }));
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [guest]);
   const [placeError, setPlaceError] = useState("");
 
   // Same tree as the menu page: top tab, then L1Des cards, then L2Des cards.
@@ -435,6 +543,23 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
 
   const dishRefs = useRef<Record<string, HTMLImageElement | null>>({});
   const cartRef = useRef<HTMLSpanElement | null>(null);
+  // One soft press of the cart badge each time a dish is added (never on first paint).
+  const lastCount = useRef<number | null>(null);
+  useEffect(() => {
+    const badge = cartRef.current;
+    if (!badge) return;
+    if (lastCount.current === null || lastCount.current === count) {
+      lastCount.current = count;
+      return;
+    }
+    lastCount.current = count;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    badge.classList.remove("ms-pop");
+    void badge.offsetWidth;
+    badge.classList.add("ms-pop");
+    const id = window.setTimeout(() => badge.classList.remove("ms-pop"), 460);
+    return () => window.clearTimeout(id);
+  }, [count]);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -503,23 +628,68 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     setView(next);
   };
 
-  const confirmTable = () => {
+  const confirmTable = async () => {
     const next: Errors = {};
     if (t.name.trim().length < 2) next.name = "Please enter your name.";
     if (!phoneOk(t.phone)) next.phone = "Enter a valid phone number.";
     if (guests < 1) next.guests = "Add at least one guest (local or foreign).";
     if (!t.date) next.date = "Choose a date.";
     else if (t.date < tomorrow) next.date = "Please choose tomorrow or a later date.";
-    if (!t.time) next.time = "Choose a seating time.";
+    if (!t.from) next.from = "Choose when the table starts.";
+    if (!t.to) next.to = "Choose when the table is given back.";
+    else if (t.from && t.to <= t.from) next.to = "The period has to end after it starts.";
+    if (!activeGroup) next.group = "Choose a dining area.";
+    if (!t.tableNo) next.tableNo = "Choose a table.";
     setErrors(next);
     if (Object.keys(next).length) return;
     if (!getGuest()) {
       goToSignIn("table", t.phone, t.name);
       return;
     }
-    setKind("table");
-    setRef(bookingRef("MC-TBL"));
-    setView("success");
+
+    // The booking is written to dbo.Tbl_TabelReservation — never a local pretend.
+    setSaving(true);
+    setSaveError("");
+    try {
+      const response = await fetch("/api/reserve/confirm", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          locCode: floor.locations[0]?.code ?? "",
+          tableNo: t.tableNo,
+          groupName: activeGroup?.name ?? "",
+          date: t.date,
+          timeFrom: t.from,
+          timeTo: t.to,
+          pax: guests,
+          customerName: t.name.trim(),
+          customerPhone: t.phone.trim(),
+          note: t.note.trim(),
+        }),
+      });
+      const data = (await response.json().catch(() => null)) as
+        | { ok?: boolean; resId?: string; message?: string; reason?: string }
+        | null;
+
+      if (!response.ok || !data?.ok || !data.resId) {
+        setSaveError(
+          data?.reason === "not-configured"
+            ? "The restaurant’s reservation system isn’t connected here, so this booking was not saved. Your details are still in the form."
+            : data?.message
+              ? `${data.message} Nothing was saved.`
+              : "We couldn’t reach the reservation desk, so this booking was not saved. Please try again in a moment.",
+        );
+        return;
+      }
+
+      setKind("table");
+      setRef(`${data.resId} · ${t.tableNo}`);
+      setView("success");
+    } catch {
+      setSaveError("We couldn’t reach the reservation desk, so this booking was not saved. Please check your connection and try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const confirmRoom = () => {
@@ -776,12 +946,91 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
             <Field id="tphone" label="Phone number *" value={t.phone} onChange={(v) => setT({ ...t, phone: v })} placeholder="07X XXX XXXX" inputMode="tel" error={errors.phone} autoComplete="tel" />
             <Field id="tdate" label="Date *" type="date" min={tomorrow} value={t.date} onChange={(v) => setT({ ...t, date: v })} error={errors.date} />
             <div className="field">
-              <label htmlFor="ttime">Time *</label>
-              <select id="ttime" value={t.time} onChange={(e) => setT({ ...t, time: e.target.value })} aria-invalid={errors.time ? true : undefined}>
-                <option value="">Choose a time</option>
-                {TIMES.map((x) => <option key={x} value={x}>{x}</option>)}
+              <label htmlFor="tfrom">Time period *</label>
+              <div className="period-row">
+                <select
+                  id="tfrom"
+                  aria-label="Table from"
+                  value={t.from}
+                  onChange={(e) => {
+                    const from = e.target.value;
+                    const to = addMinutes(from, Number(periodLength));
+                    setT({ ...t, from, to: from ? to : "" });
+                  }}
+                  aria-invalid={errors.from ? true : undefined}
+                >
+                  <option value="">From</option>
+                  {PERIOD_START.map((x) => <option key={x} value={x}>{prettyTime(x)}</option>)}
+                </select>
+                <span className="period-dash" aria-hidden="true">—</span>
+                <select
+                  id="tto"
+                  aria-label="Table until"
+                  value={t.to}
+                  onChange={(e) => setT({ ...t, to: e.target.value })}
+                  aria-invalid={errors.to ? true : undefined}
+                >
+                  <option value="">Until</option>
+                  {PERIOD_END.map((x) => <option key={x} value={x}>{prettyTime(x)}</option>)}
+                </select>
+              </div>
+              <div className="period-chips" role="group" aria-label="How long the table is needed">
+                {PERIOD_LENGTHS.map((length) => (
+                  <button
+                    key={length.id}
+                    type="button"
+                    className={`chip${periodLength === length.id ? " is-on" : ""}`}
+                    aria-pressed={periodLength === length.id}
+                    onClick={() => {
+                      setPeriodLength(length.id);
+                      if (t.from) setT({ ...t, to: addMinutes(t.from, Number(length.id)) });
+                    }}
+                  >
+                    {length.label}
+                  </button>
+                ))}
+              </div>
+              {(errors.from || errors.to) && <p className="err" role="alert">{errors.from || errors.to}</p>}
+            </div>
+            <div className="field">
+              <label htmlFor="tgroup">Dining area *</label>
+              <select
+                id="tgroup"
+                value={t.group}
+                onChange={(e) => setT({ ...t, group: e.target.value, tableNo: "" })}
+                aria-invalid={errors.group ? true : undefined}
+              >
+                <option value="">Choose an area</option>
+                {floor.groups.map((group) => (
+                  <option key={group.id || group.name} value={group.id || group.name}>
+                    {group.name}{group.tableCount ? ` · ${group.tableCount} tables` : ""}
+                  </option>
+                ))}
               </select>
-              {errors.time && <p className="err" role="alert">{errors.time}</p>}
+              {errors.group && <p className="err" role="alert">{errors.group}</p>}
+            </div>
+            <div className="field">
+              <label htmlFor="ttable">Table *</label>
+              <select
+                id="ttable"
+                value={t.tableNo}
+                onChange={(e) => setT({ ...t, tableNo: e.target.value })}
+                disabled={!activeGroup}
+                aria-invalid={errors.tableNo ? true : undefined}
+              >
+                <option value="">{activeGroup ? "Choose a table" : "Choose an area first"}</option>
+                {groupTables.map((table) => (
+                  <option key={table.no} value={table.no}>
+                    {table.no}{table.vacant === true ? " · vacant" : table.vacant === false ? " · occupied" : ""}
+                  </option>
+                ))}
+              </select>
+              {errors.tableNo && <p className="err" role="alert">{errors.tableNo}</p>}
+              <p className="micro">
+                {activeGroup
+                  ? `${groupTables.length} ${groupTables.length === 1 ? "table" : "tables"} in ${activeGroup.name}${floorLive ? "" : " · held in this build until the restaurant system answers"}.`
+                  : "Areas and tables come from the restaurant’s floor plan."}
+              </p>
             </div>
             <div className="field">
               <label htmlFor="tlocal">Local guests *</label>
@@ -807,20 +1056,25 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
               <p className="micro">Type any number you need — there’s no fixed limit. For larger parties, add a note below.</p>
               {errors.guests && <p className="err" role="alert" style={{ flexBasis: "100%" }}>{errors.guests}</p>}
             </div>
-            <div className="field">
-              <label htmlFor="tseating">Seating preference</label>
-              <select id="tseating" value={t.seating} onChange={(e) => setT({ ...t, seating: e.target.value })}>
-                {SEATING.map((x) => <option key={x}>{x}</option>)}
-              </select>
-            </div>
             <TextArea id="tnote" label="Special requests" value={t.note} onChange={(v) => setT({ ...t, note: v })} placeholder="Allergies, a birthday, a high chair, anything else we should know…" />
           </div>
           <p className="micro" style={{ margin: "4px 0 0" }}>Please mention any allergies or dietary needs in the special requests box.</p>
           {signInHint}
           {signedInLine}
+          {saveError && <p className="err save-error" role="alert">{saveError}</p>}
           <div className="actions">
-            <span className="note">Your table is held for 15 minutes after the seating time.</span>
-            <button className="btn" type="button" onClick={confirmTable}>Confirm reservation <Arrow /></button>
+            <span className="note">Your table is held for 15 minutes from the start of the period.</span>
+            <button
+              className="btn"
+              type="button"
+              onClick={confirmTable}
+              disabled={saving}
+              data-busy={saving ? "true" : "false"}
+              aria-busy={saving}
+            >
+              <span className="btn-label">{saving ? "Saving your table…" : "Confirm reservation"}</span> <Arrow />
+              <span className="btn-spin" aria-hidden="true"><i /></span>
+            </button>
           </div>
         </section>
         {summary(
@@ -828,9 +1082,10 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
             <h4>Dinner at Mila Mirissa</h4>
             <div className="sum-line"><span>Guest</span><b>{t.name || "—"}</b></div>
             <div className="sum-line"><span>Date</span><b>{t.date || "—"}</b></div>
-            <div className="sum-line"><span>Time</span><b>{t.time || "—"}</b></div>
+            <div className="sum-line"><span>Period</span><b>{t.from && t.to ? `${prettyTime(t.from)} – ${prettyTime(t.to)}` : "—"}</b></div>
             <div className="sum-line"><span>Guests</span><b>{t.local} local · {t.foreign} foreign</b></div>
-            <div className="sum-line"><span>Seating</span><b>{t.seating}</b></div>
+            <div className="sum-line"><span>Area</span><b>{activeGroup?.name || "—"}</b></div>
+            <div className="sum-line"><span>Table</span><b>{chosenTable ? `${chosenTable.no}${chosenTable.vacant === false ? " · occupied" : ""}` : "—"}</b></div>
             <div className="sum-total"><span>Table charge</span><strong>Free</strong></div>
           </>,
           <><span>Your table</span><span>{guests} {guests === 1 ? "guest" : "guests"}</span></>,
@@ -1370,8 +1625,16 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
           {signedInLine}
           <div className="actions">
             <button className="text-link" type="button" onClick={() => go("cart")} disabled={placing}><Left /> Back to cart</button>
-            <button className="btn" type="button" onClick={confirmOrder} disabled={placing} aria-busy={placing}>
-              {placing ? "Saving your order…" : <>Place order · {money(subtotal + delivery, "LKR")} <Arrow /></>}
+            <button
+              className="btn"
+              type="button"
+              onClick={confirmOrder}
+              disabled={placing}
+              data-busy={placing ? "true" : "false"}
+              aria-busy={placing}
+            >
+              <span className="btn-label">{placing ? "Saving your order…" : `Place order · ${money(subtotal + delivery, "LKR")}`}</span> <Arrow />
+              <span className="btn-spin" aria-hidden="true"><i /></span>
             </button>
           </div>
         </section>
@@ -1406,12 +1669,14 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
             ? `Thank you, ${order.name.split(" ")[0] || "friend"}. ${isDelivery ? "Delivery" : "Pickup"} for ${scheduleLabel || "your chosen time"}${!isDelivery && pickupLocationName ? ` at ${pickupLocationName}` : ""}. The kitchen will call ${order.phone} to confirm.`
             : kind === "room"
               ? `${r.name.split(" ")[0] || "Guest"}, we’ve noted your stay from ${r.checkin} to ${r.checkout}.`
-              : `Thank you, ${t.name.split(" ")[0] || "friend"}. We’ll see you at ${t.time} on ${t.date} for ${guests} ${guests === 1 ? "guest" : "guests"}.`}
+              : `Thank you, ${t.name.split(" ")[0] || "friend"}. ${t.tableNo} is yours from ${prettyTime(t.from)} to ${prettyTime(t.to)} on ${prettyDay(t.date)} for ${guests} ${guests === 1 ? "guest" : "guests"}.`}
         </p>
         <p className="micro">
           {kind === "order"
             ? "Your order is saved in the restaurant’s system. The kitchen will call to confirm."
-            : "Your details stay in this browser tab — nothing has been sent to the restaurant yet."}
+            : kind === "table"
+              ? "Your table is saved in the restaurant’s reservation book. We’ll call to confirm."
+              : "Your details stay in this browser tab — nothing has been sent to the restaurant yet."}
         </p>
         <span className="ref">{ref}</span>
         <div className="success-actions">
