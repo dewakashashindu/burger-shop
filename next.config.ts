@@ -31,8 +31,10 @@ const nextConfig: NextConfig = {
   experimental: {
     agentFeedback: true,
   },
-  cacheComponents: true,
-  partialPrefetching: true,
+  // Both cacheComponents and partialPrefetching leave the previous page's
+  // <div class="app-shell"> in the DOM on a client-side route change: the header,
+  // footer and "Order now" pill pile up one screen behind another and the top
+  // copy still links to the old page. Off, every route swaps cleanly.
   turbopack: {
     rules: {
       "*.css": {

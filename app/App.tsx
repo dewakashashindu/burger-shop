@@ -1506,22 +1506,22 @@ export default function App({ storyPage = false, menuPage = false, contactPage =
   }, [mobileMenu]);
   const navLinks = [
     { label: "Home", id: "home" },
-    { label: "Our kitchen", id: "kitchen" },
     { label: "Our story", id: "story" },
   ] as const;
-  const sectionHref = (id: RestaurantSection) =>
-    id === "story"
-      ? "/our-story"
-      : storyPage || menuPage
-        ? id === "home"
-          ? "/"
-          : "/#kitchen"
-        : `#${id}`;
+  const homePage = !storyPage && !menuPage && !contactPage;
+  const sectionHref = (id: RestaurantSection) => {
+    if (id === "story") return "/our-story";
+    // Only the homepage can scroll to a section. Everywhere else — the menu,
+    // the story, Contact us — the brand and "Home" have to be a real link back
+    // to "/", otherwise clicking the logo does nothing.
+    if (!homePage) return id === "home" ? "/" : "/#kitchen";
+    return `#${id}`;
+  };
   const followSection = (
     event: ReactMouseEvent<HTMLAnchorElement>,
     id: RestaurantSection,
   ) => {
-    if (!storyPage && !menuPage && id !== "story" && navigateSection(id))
+    if (homePage && id !== "story" && navigateSection(id))
       event.preventDefault();
   };
   if (authPage)
