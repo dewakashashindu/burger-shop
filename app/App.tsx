@@ -29,11 +29,10 @@ import {
 // Owner setup: replace the menu below and these details before going live.
 // Leave unknown values empty: the website will never invent contact information.
 const RESTAURANT = {
-  name: "Mila Mirissa",
-  email: "",
-  phone: "",
-  address: "",
-  hours: "",
+  name: "Mila Mirissā",
+  email: "hello.milamirissa@gmail.com",
+  // Every number the restaurant answers on, in the order they should be tried.
+  phones: ["0772336233", "0771096131"],
 };
 const IMAGE = {
   restaurant: `/images/restaurant.jpg`,
@@ -1580,7 +1579,7 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
             </Link>
           ))}
           <Link href="/menu" className={menuPage ? "active" : ""} aria-current={menuPage ? "page" : undefined}>The menu</Link>
-          <button onClick={() => open("visit")}>Visit us</button>
+          <button onClick={() => open("visit")}>Contact us</button>
           <button
             className="button button-outline"
             onClick={() => open("booking")}
@@ -1646,7 +1645,7 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
               onClick={() => open("visit")}
               style={{ transitionDelay: mobileMenu ? "340ms" : "0ms" }}
             >
-              Visit us
+              Contact us
               <Arrow />
             </button>
           </nav>
@@ -2144,7 +2143,13 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => open("visit")}>Contact</button>
+                  <button onClick={() => open("visit")}>Contact us</button>
+                </li>
+                <li>
+                  <a href={`tel:${RESTAURANT.phones[0]}`}>{RESTAURANT.phones[0]}</a>
+                </li>
+                <li>
+                  <a href={`mailto:${RESTAURANT.email}`}>{RESTAURANT.email}</a>
                 </li>
               </ul>
             </nav>
@@ -2233,7 +2238,7 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
         </Dialog>
       )}
       {modal === "visit" && (
-        <Dialog title="We’d love to see you." onClose={closeModal}>
+        <Dialog title="Come and say hello." onClose={closeModal}>
           <p className="dialog-intro">A little kitchen. A warm welcome.</p>
           <Image
             width={1376}
@@ -2243,37 +2248,63 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
             src={IMAGE.restaurant}
             alt="A warm, welcoming dining room"
           />
-          <div className="contact-list">
-            <div>
-              <span className="eyebrow">Find us</span>
-              <p>
-                {RESTAURANT.address || "Our location will be shared here soon."}
-              </p>
+          <div className="contact-card">
+            <div className="contact-card__row">
+              <span className="contact-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M7.2 4.6h2.1l1.5 3.6-1.9 1.3a10.6 10.6 0 0 0 5.6 5.6l1.3-1.9 3.6 1.5v2.1a2.4 2.4 0 0 1-2.6 2.4A15.7 15.7 0 0 1 4.8 7.2a2.4 2.4 0 0 1 2.4-2.6Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                </svg>
+              </span>
+              <div>
+                <span className="contact-card__label">Call us</span>
+                <span className="contact-card__value contact-card__value--icons">
+                  {RESTAURANT.phones.map((number) => (
+                    <a key={number} href={`tel:${number}`} className="contact-card__phone">
+                      {number}
+                    </a>
+                  ))}
+                </span>
+                <span className="contact-card__hint">Tap to call — for a table today, a quick call is quickest.</span>
+              </div>
             </div>
-            <div>
-              <span className="eyebrow">Opening hours</span>
-              <p>{RESTAURANT.hours || "Opening hours are being confirmed."}</p>
+
+            <div className="contact-card__row">
+              <span className="contact-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <rect x="3.2" y="5.4" width="17.6" height="13.2" rx="2.2" stroke="currentColor" strokeWidth="1.4" />
+                  <path d="m4.4 7.2 6.5 5.1a1.8 1.8 0 0 0 2.2 0l6.5-5.1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                </svg>
+              </span>
+              <div>
+                <span className="contact-card__label">Email us</span>
+                <span className="contact-card__value">
+                  <a href={`mailto:${RESTAURANT.email}?subject=${encodeURIComponent("Hello Mila Mirissā")}`}>{RESTAURANT.email}</a>
+                </span>
+                <span className="contact-card__hint">Rooms, larger tables and anything planned ahead.</span>
+              </div>
             </div>
-            <div>
-              <span className="eyebrow">Say hello</span>
-              <p>
-                {RESTAURANT.email ? (
-                  <Link href={`mailto:${RESTAURANT.email}`}>
-                    {RESTAURANT.email}
-                  </Link>
-                ) : (
-                  "Contact details will be added before launch."
-                )}
-              </p>
-              {RESTAURANT.phone && (
-                <Link href={`tel:${RESTAURANT.phone}`}>{RESTAURANT.phone}</Link>
-              )}
+
+            <div className="contact-card__row">
+              <span className="contact-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M12 21s6.4-5.6 6.4-10.4A6.4 6.4 0 0 0 5.6 10.6C5.6 15.4 12 21 12 21Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                  <circle cx="12" cy="10.4" r="2.3" stroke="currentColor" strokeWidth="1.4" />
+                </svg>
+              </span>
+              <div>
+                <span className="contact-card__label">Find us</span>
+                <span className="contact-card__value">Mirissa, Sri Lanka</span>
+                <span className="contact-card__hint">The kitchen takes tables, rooms and takeaway — call or write and we’ll point you the right way.</span>
+              </div>
             </div>
           </div>
-          <div className="notice">
-            Restaurant address, hours and contact details have
-            not been provided. Images are AI-generated concept photography, not
-            verified photos of the venue or its dishes.
+          <div className="contact-card__actions">
+            <button className="button button-dark" onClick={() => open("booking")}>
+              Find your table <Arrow />
+            </button>
+            <button className="text-link" onClick={closeModal}>
+              Back to the restaurant
+            </button>
           </div>
         </Dialog>
       )}

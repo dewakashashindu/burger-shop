@@ -1812,3 +1812,102 @@ button.circle-button:hover {
     bottom: 78px;
   }
 }
+
+/* ---- Contact us: the three rows a guest actually needs ------------- */
+.contact-card {
+  margin: 4px 0 22px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #faf7f0;
+  overflow: hidden;
+}
+.contact-card__row {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 14px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.contact-card__row:last-child {
+  border-bottom: 0;
+}
+.contact-card__icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #efe6d7;
+  color: #7a5634;
+}
+.contact-card__icon svg {
+  width: 18px;
+  height: 18px;
+}
+.contact-card__label {
+  display: block;
+  font-size: 8.5px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: #8f7b63;
+  margin-bottom: 6px;
+}
+.contact-card__value {
+  display: block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 19px;
+  line-height: 1.25;
+  letter-spacing: -0.4px;
+  color: #3f3325;
+}
+.contact-card__value a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.contact-card__value a:hover,
+.contact-card__value a:focus-visible {
+  color: #6d4a2c;
+  border-bottom-color: #c9b79d;
+}
+.contact-card__value--icons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+.contact-card__phone {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.contact-card__hint {
+  display: block;
+  margin-top: 7px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #7d6e5c;
+}
+.contact-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+@media (max-width: 560px) {
+  .contact-card__row {
+    grid-template-columns: 32px 1fr;
+    gap: 11px;
+    padding: 15px 15px;
+  }
+  .contact-card__icon {
+    width: 32px;
+    height: 32px;
+  }
+  .contact-card__icon svg {
+    width: 16px;
+    height: 16px;
+  }
+  .contact-card__value {
+    font-size: 17px;
+  }
+}
