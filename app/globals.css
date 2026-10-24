@@ -1623,47 +1623,131 @@ button.circle-button:hover {
   z-index: 60;
   display: inline-flex;
   align-items: center;
-  gap: 9px;
-  padding: 13px 20px;
+  gap: 10px;
+  padding: 16px 26px;
   border: 0;
   border-radius: 999px;
-  background: linear-gradient(180deg, #8a6136, #6d4a2c);
+  background: linear-gradient(180deg, #8f6639, #6d4a2c);
   color: #fdf7ee;
-  font: 600 12.5px/1 Inter, Arial, sans-serif;
+  font: 600 14px/1 Inter, Arial, sans-serif;
   letter-spacing: 0.2px;
   cursor: pointer;
+  overflow: hidden;
+  isolation: isolate;
   box-shadow:
-    0 12px 26px -10px rgba(95, 65, 38, 0.75),
-    0 0 0 5px rgba(122, 86, 52, 0.12);
+    0 16px 32px -12px rgba(95, 65, 38, 0.78),
+    0 0 0 6px rgba(122, 86, 52, 0.13);
+  /* arrives with a soft bounce, then keeps a slow, warm breathing halo */
+  animation:
+    orderPillIn 0.78s cubic-bezier(0.2, 0.9, 0.25, 1.12) both,
+    orderPillGlow 4.6s ease-in-out 0.9s infinite;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
+/* a single sweep of light across the pill, right after it lands */
+.order-pill::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(105deg, transparent 32%, rgba(255, 238, 210, 0.5) 48%, transparent 64%);
+  transform: translateX(-130%);
+  animation: orderPillSheen 1.25s ease-out 0.55s 1 both;
+  pointer-events: none;
+}
 .order-pill:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px) scale(1.015);
   box-shadow:
-    0 16px 30px -10px rgba(95, 65, 38, 0.8),
-    0 0 0 6px rgba(122, 86, 52, 0.16);
+    0 20px 34px -12px rgba(95, 65, 38, 0.85),
+    0 0 0 7px rgba(122, 86, 52, 0.17);
+}
+.order-pill:hover svg {
+  transform: translate(1.5px, -1.5px);
+}
+.order-pill:active {
+  transform: translateY(0) scale(0.99);
 }
 .order-pill:focus-visible {
   outline: 2px solid #8a6136;
   outline-offset: 4px;
 }
+.order-pill > * {
+  position: relative;
+  z-index: 1;
+}
 .order-pill svg {
-  width: 13px;
-  height: 13px;
-  opacity: 0.85;
+  width: 14px;
+  height: 14px;
+  opacity: 0.9;
+  transition: transform 0.2s ease;
 }
 .order-pill__dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #f6e3c8;
+  box-shadow: 0 0 0 0 rgba(246, 227, 200, 0.65);
+  animation: orderPillDot 2.6s ease-in-out 1.1s infinite;
+}
+@keyframes orderPillIn {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.9);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes orderPillGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 16px 32px -12px rgba(95, 65, 38, 0.78),
+      0 0 0 6px rgba(122, 86, 52, 0.13);
+  }
+  50% {
+    box-shadow:
+      0 18px 34px -12px rgba(95, 65, 38, 0.82),
+      0 0 0 10px rgba(122, 86, 52, 0.07);
+  }
+}
+@keyframes orderPillSheen {
+  from {
+    transform: translateX(-130%);
+  }
+  to {
+    transform: translateX(130%);
+  }
+}
+@keyframes orderPillDot {
+  0%,
+  72%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(246, 227, 200, 0.55);
+  }
+  18% {
+    box-shadow: 0 0 0 5px rgba(246, 227, 200, 0);
+  }
 }
 @media (max-width: 767px) {
   .order-pill {
     right: 16px;
     bottom: 16px;
-    padding: 12px 17px;
-    font-size: 12px;
+    padding: 14px 22px;
+    font-size: 13px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .order-pill,
+  .order-pill::before,
+  .order-pill__dot {
+    animation: none;
+  }
+  .order-pill::before {
+    display: none;
   }
 }
 
@@ -1695,7 +1779,7 @@ button.circle-button:hover {
   opacity: 0.9;
 }
 .signin-fab.is-stacked {
-  bottom: 82px;
+  bottom: 92px;
 }
 .signin-fab:hover {
   transform: translateY(-1px);
@@ -1725,6 +1809,6 @@ button.circle-button:hover {
     font-size: 11.5px;
   }
   .signin-fab.is-stacked {
-    bottom: 68px;
+    bottom: 78px;
   }
 }

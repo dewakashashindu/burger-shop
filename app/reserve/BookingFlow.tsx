@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CATS, DISHES, PACKAGES, PHOTO, ROOMS, money, type Dish, type Room } from "./booking-data";
 import type { MenuDish } from "../menu-data";
-import { forgetGuest, getGuest, rememberGuest, useGuest } from "../session";
+import { usePathname, useRouter } from "next/navigation";
+import { forgetGuest, getGuest, useGuest } from "../session";
+import { updateAuthDraft } from "../auth/auth-draft";
 
 type View =
   | "choose"
@@ -206,6 +208,54 @@ function TextArea({
   );
 }
 
+/**
+ * A guest who has filled the form but not yet signed in is sent to the real
+ * sign-in screen. Before leaving, the half-built booking is parked in
+ * sessionStorage so the very same cart, dates and details come back with them.
+ */
+const DRAFT_KEY = "microechef-draft";
+type PendingConfirm = "table" | "room" | "order";
+type SavedDraft = {
+  view: View;
+  kind: Kind;
+  t: unknown;
+  r: unknown;
+  order: unknown;
+  cart: Record<string, number>;
+  pending: PendingConfirm | null;
+};
+
+function readDraft(): SavedDraft | null {
+  try {
+    const raw = window.sessionStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as SavedDraft) : null;
+  } catch {
+    return null;
+  }
+}
+function writeDraft(draft: SavedDraft) {
+  try {
+    window.sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    /* private mode — the guest simply fills the form again */
+  }
+}
+function clearDraft() {
+  try {
+    window.sessionStorage.removeItem(DRAFT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+/** "0771234567" / "+94771234567" → the national number the sign-in screen expects. */
+function nationalPhone(raw: string) {
+  let digits = raw.replace(/[^\d+]/g, "");
+  if (digits.startsWith("+94")) digits = digits.slice(3);
+  else if (digits.startsWith("+")) return "";
+  if (digits.startsWith("0")) digits = digits.slice(1);
+  return digits;
+}
+
 export default function BookingFlow({ start = "choose" }: { start?: "choose" | "table" | "rooms" | "order" | "reserve" }) {
   const [view, setView] = useState<View>(start === "order" ? "order" : start === "reserve" ? "reserve" : "choose");
   const [kind, setKind] = useState<Kind>("table");
@@ -214,27 +264,13 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
   const [toast, setToast] = useState("");
 
   // Sign-in happens at the very end: the guest fills the form first, and only
-  // then is asked who they are. Nothing typed here is lost in the meantime.
+  // then is sent to the real sign-in screen (/auth/login). Nothing typed here
+  // is lost in the meantime — the draft travels with them.
   const guest = useGuest();
-  const [gate, setGate] = useState({ open: false, phone: "", password: "", error: "" });
-  const pendingAction = useRef<null | (() => void)>(null);
-
-  /** Runs `action` straight away when the guest is known, otherwise asks first. */
-  const needSignIn = (action: () => void, phone: string, name = "") => {
-    if (getGuest()) {
-      action();
-      return;
-    }
-    pendingAction.current = action;
-    setGate({ open: true, phone: phone.trim(), password: "", error: "" });
-    if (!name) return;
-  };
-  const finishGate = () => {
-    const action = pendingAction.current;
-    pendingAction.current = null;
-    setGate({ open: false, phone: "", password: "", error: "" });
-    action?.();
-  };
+  const router = useRouter();
+  const pathname = usePathname();
+  const [resuming, setResuming] = useState<PendingConfirm | null>(null);
+  const resumeFired = useRef(false);
 
   const [t, setT] = useState({
     name: "",
@@ -361,63 +397,29 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
   };
 
   // ---------------------------------------------------------------- sign in
-  const gateLabel =
+  const confirmLabel =
     view === "checkout" ? "place this order"
       : view === "table" ? "confirm this table"
         : "confirm this stay";
-  const submitGate = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (gate.phone.replace(/\D/g, "").length < 9) {
-      setGate((old) => ({ ...old, error: "Enter the phone number for this booking." }));
-      return;
-    }
-    if (!gate.password.trim()) {
-      setGate((old) => ({ ...old, error: "Enter your password." }));
-      return;
-    }
-    // Sign-in is not connected to an account service yet — this only remembers
-    // the tab, exactly like the auth screen does.
-    rememberGuest({ name: order.name || t.name || r.name, phone: gate.phone });
-    finishGate();
+
+  /** Parks the booking and walks the guest to the sign-in screen. */
+  const goToSignIn = (pending: PendingConfirm | null, phone: string, name = "") => {
+    writeDraft({ view, kind, t, r, order, cart, pending });
+    const local = nationalPhone(phone);
+    if (local || name) updateAuthDraft({ ...(local ? { phone: local } : {}), ...(name ? { name } : {}) });
+    const back = `${pathname}${pending ? "?resume=1" : ""}`;
+    router.push(`/auth/login?next=${encodeURIComponent(back)}`);
   };
-  const signInCard = gate.open ? (
-    <form className="signin-card" onSubmit={submitGate} aria-labelledby="signin-title">
-      <span className="eyebrow">ONE LAST STEP</span>
-      <h4 id="signin-title">Sign in to {gateLabel}</h4>
-      <p>Your details, the time and your cart are kept — nothing is charged on this website.</p>
-      <div className="form-grid">
-        <Field
-          id="signin-phone"
-          label="Phone number"
-          value={gate.phone}
-          onChange={(v) => { setGate((old) => ({ ...old, phone: v, error: "" })); }}
-          placeholder="07X XXX XXXX"
-          inputMode="tel"
-          autoComplete="tel"
-        />
-        <Field
-          id="signin-password"
-          label="Password"
-          type="password"
-          value={gate.password}
-          onChange={(v) => { setGate((old) => ({ ...old, password: v, error: "" })); }}
-          placeholder="Enter your password"
-          autoComplete="current-password"
-        />
-      </div>
-      {gate.error && <p className="err" role="alert">{gate.error}</p>}
-      <div className="signin-actions">
-        <button className="btn" type="submit">Log in &amp; {gateLabel} <Arrow /></button>
-        <button
-          className="text-link"
-          type="button"
-          onClick={() => { pendingAction.current = null; setGate({ open: false, phone: "", password: "", error: "" }); }}
-        >
-          Not now
-        </button>
-      </div>
-    </form>
-  ) : null;
+
+  const signInHint = guest ? null : (
+    <p className="signin-hint">
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+        <rect x="4.5" y="10.5" width="15" height="9.5" rx="2.2" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M8.2 10.5V8a3.8 3.8 0 1 1 7.6 0v2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+      You’ll sign in to {confirmLabel} — your details come with you.
+    </p>
+  );
   const signedInLine = guest ? (
     <p className="signed-in">
       Signed in as <b>{guest.phone}</b>
@@ -438,6 +440,27 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [view]);
+
+  // ---- coming back from /auth/login -------------------------------------
+  // The parked booking is put back exactly as it was. If the guest arrived
+  // here to confirm something, that confirmation now runs — they already asked
+  // for it before signing in. The restore is deferred one tick so the server
+  // and the first client paint start from the same, empty tree.
+  useEffect(() => {
+    const draft = readDraft();
+    if (!draft) return;
+    clearDraft();
+    const id = window.setTimeout(() => {
+      if (draft.t) setT((old) => ({ ...old, ...(draft.t as Partial<typeof old>) }));
+      if (draft.r) setR((old) => ({ ...old, ...(draft.r as Partial<typeof old>) }));
+      if (draft.order) setOrder((old) => ({ ...old, ...(draft.order as Partial<typeof old>) }));
+      if (draft.cart) setCart(draft.cart);
+      if (draft.kind) setKind(draft.kind);
+      if (draft.view) setView(draft.view);
+      if (getGuest() && draft.pending) setResuming(draft.pending);
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, []);
   useEffect(() => () => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
   }, []);
@@ -491,7 +514,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     setErrors(next);
     if (Object.keys(next).length) return;
     if (!getGuest()) {
-      needSignIn(() => confirmTable(), t.phone, t.name);
+      goToSignIn("table", t.phone, t.name);
       return;
     }
     setKind("table");
@@ -510,7 +533,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     setErrors(next);
     if (Object.keys(next).length) return;
     if (!getGuest()) {
-      needSignIn(() => confirmRoom(), r.phone, r.name);
+      goToSignIn("room", r.phone, r.name);
       return;
     }
     setKind("room");
@@ -533,7 +556,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     setErrors(next);
     if (Object.keys(next).length) return;
     if (!getGuest()) {
-      needSignIn(() => confirmOrder(), order.phone, order.name);
+      goToSignIn("order", order.phone, order.name);
       return;
     }
 
@@ -581,6 +604,24 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
       setPlacing(false);
     }
   };
+
+  // Runs once the restored draft has landed in state, so the confirmation sees
+  // the guest's own values. `?resume=1` is then dropped from the URL.
+  useEffect(() => {
+    if (!resuming || resumeFired.current) return;
+    resumeFired.current = true;
+    const pending = resuming;
+    const id = window.setTimeout(() => {
+      if (window.location.search.includes("resume=")) {
+        window.history.replaceState(null, "", pathname || "/reserve");
+      }
+      if (pending === "table") confirmTable();
+      else if (pending === "room") confirmRoom();
+      else void confirmOrder();
+    }, 0);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fires once per restored draft
+  }, [resuming]);
 
   const addToCart = (id: string) => {
     const dish = dishes.find((d) => d.id === id);
@@ -775,7 +816,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
             <TextArea id="tnote" label="Special requests" value={t.note} onChange={(v) => setT({ ...t, note: v })} placeholder="Allergies, a birthday, a high chair, anything else we should know…" />
           </div>
           <p className="micro" style={{ margin: "4px 0 0" }}>Please mention any allergies or dietary needs in the special requests box.</p>
-          {signInCard}
+          {signInHint}
           {signedInLine}
           <div className="actions">
             <span className="note">Your table is held for 15 minutes after the seating time.</span>
@@ -978,7 +1019,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
             </div>
             <TextArea id="rnote" label="Special requests" value={r.note} onChange={(v) => setR({ ...r, note: v })} placeholder="Late arrival, dietary needs, a quiet room…" />
           </div>
-          {signInCard}
+          {signInHint}
           {signedInLine}
           <div className="actions">
             <button className="text-link" type="button" onClick={() => go("room")}><Left /> Back to room</button>
@@ -1325,7 +1366,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
           </div>
           {errors.cart && <p className="err" role="alert">{errors.cart}</p>}
           {placeError && <p className="err" role="alert">{placeError}</p>}
-          {signInCard}
+          {signInHint}
           {signedInLine}
           <div className="actions">
             <button className="text-link" type="button" onClick={() => go("cart")} disabled={placing}><Left /> Back to cart</button>

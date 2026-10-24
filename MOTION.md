@@ -7,7 +7,7 @@ This is the integrated version of the approved **MicroEChef White Fade Preview 0
 1. The restaurant image starts in the hero's right-hand arch (below the text on mobile).
 2. Scrolling expands that same image to the exact viewport bounds, removing the corner radius.
 3. An ivory wash fades over the image, leaving the restaurant faintly visible.
-4. The complete **Honest food. Happy moments.** layout appears: signature burger card and three food-mosaic cards. The buttons open the real menu dialog.
+4. The complete **Honest food. Happy moments.** layout appears: signature food card and three food-mosaic cards. The buttons open the real menu page. In v8 the signature photograph is chicken kottu; its container dimensions and animation code remain unchanged.
 5. More scrolling fades the food section out, removes the white wash, and shrinks the same image into the measured story arch.
 6. The story, its interactive overlay cards, and the normal-flow footer follow.
 

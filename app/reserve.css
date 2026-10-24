@@ -390,18 +390,8 @@
 .loc-field{margin-top:14px}
 
 /* ---------- sign in, at the very end ---------- */
-.reserve-page-shell .signin-card{margin-top:20px;border:1px solid rgba(122,86,52,.3);border-radius:9px;background:#f0e5dd;padding:18px 20px 20px}
-.reserve-page-shell .signin-card .eyebrow{color:#8d7360}
-.reserve-page-shell .signin-card h4{font:22px/1.2 Georgia,serif;font-weight:400;letter-spacing:-.5px;margin:8px 0 6px;color:#3f3325}
-.reserve-page-shell .signin-card p{font-size:11px;line-height:1.8;color:#7b6b59;max-width:44ch}
-.reserve-page-shell .signin-card .form-grid{margin-top:14px;gap:12px}
-.reserve-page-shell .signin-card .field input{background:#fffdf9;border-color:rgba(122,86,52,.28)}
-.reserve-page-shell .signin-card .signin-actions{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:14px}
-.reserve-page-shell .signin-card .signin-actions .btn{background:#7a5634}
-.reserve-page-shell .signin-card .signin-actions .btn:hover{background:#6d4a2c}
 .reserve-page-shell .signed-in{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px;font-size:11px;color:#7b6b59}
 .reserve-page-shell .signed-in b{color:#3f3325;font-weight:600}
-@media(max-width:767px){.reserve-page-shell .signin-card{padding:16px}.reserve-page-shell .signin-card .signin-actions .btn{width:100%;justify-content:center}}
 
 /* ---------- reservation start: facts + the two choices ---------- */
 .reserve-page-shell .entry-facts{display:flex;flex-wrap:wrap;gap:7px;margin:18px 0 0;padding:0;list-style:none}
@@ -429,3 +419,8 @@
 .reserve-page-shell .head-logo:hover .head-logo-name,.reserve-page-shell .head-logo:focus-visible .head-logo-name{opacity:1;transform:none}
 .reserve-page-shell .head-logo:hover .head-logo-img{transform:scale(1.06);border-color:#8f6a40;box-shadow:0 6px 18px -10px rgba(47,35,23,.7)}
 @media(max-width:767px){.reserve-page-shell .head-logo{width:36px;height:36px}.reserve-page-shell .head-logo-img{width:34px;height:34px}.reserve-page-shell .head-logo-name{display:none}}
+
+/* the quiet line that says who will be asked to sign in, in place of a form */
+.reserve-page-shell .signin-hint{display:flex;align-items:center;gap:9px;margin-top:18px;font-size:11.5px;line-height:1.7;color:#8a7763}
+.reserve-page-shell .signin-hint svg{width:14px;height:14px!important;flex:none;color:#a08668}
+@media(max-width:767px){.reserve-page-shell .signin-hint{font-size:11px}}
