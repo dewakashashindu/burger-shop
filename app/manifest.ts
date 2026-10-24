@@ -8,10 +8,10 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/",
     display: "standalone",
     background_color: "#f5f1e9",
-    theme_color: "#354333",
+    theme_color: "#3f3325",
     icons: [
-      { src: "/images/mila-mirissa-logo-sm.png?v=2", sizes: "128x128", type: "image/png" },
-      { src: "/images/mila-mirissa-logo.png?v=2", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icon.png?v=4", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/apple-icon.png?v=4", sizes: "180x180", type: "image/png", purpose: "maskable" },
     ],
   };
 }

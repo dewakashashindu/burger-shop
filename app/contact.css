@@ -1,0 +1,319 @@
+/* /contact — the three ways to reach the kitchen. */
+
+.ct-page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 64px 4.7vw 90px;
+}
+@media (min-width: 1600px) {
+  .ct-page {
+    padding-inline: max(4.7vw, calc((100vw - 1500px) / 2));
+  }
+}
+
+.ct-hero {
+  max-width: 720px;
+  margin-bottom: 44px;
+}
+.ct-eyebrow {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 2.4px;
+  text-transform: uppercase;
+  color: #8f7b63;
+  margin-bottom: 18px;
+}
+.ct-hero h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: clamp(42px, 6vw, 76px);
+  line-height: 0.98;
+  letter-spacing: -2.4px;
+  color: #3f3325;
+}
+.ct-hero h1 em {
+  font-style: italic;
+  color: #7a5634;
+}
+.ct-lede {
+  margin: 22px 0 0;
+  max-width: 48ch;
+  font-size: 14px;
+  line-height: 1.9;
+  color: #7d6e5c;
+}
+
+/* ---- the three action cards ---- */
+.ct-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.ct-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 26px 26px 24px;
+  border: 1px solid rgba(63, 51, 37, 0.16);
+  border-radius: 12px;
+  background: #faf7f0;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.28s ease,
+    background 0.28s ease;
+}
+a.ct-card:hover,
+a.ct-card:focus-visible {
+  transform: translateY(-3px);
+  border-color: rgba(122, 86, 52, 0.4);
+  background: #fdfaf4;
+  box-shadow: 0 22px 44px -32px rgba(47, 35, 23, 0.55);
+}
+a.ct-card:hover .ct-arrow {
+  transform: translate(2px, -2px);
+}
+
+.ct-card--wa {
+  background: #f3ece1;
+  border-color: rgba(122, 86, 52, 0.28);
+}
+
+.ct-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+  min-height: 42px;
+}
+.ct-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #efe6d7;
+  color: #7a5634;
+  flex: none;
+}
+.ct-icon svg {
+  width: 19px;
+  height: 19px;
+}
+.ct-icon--wa {
+  background: #7a5634;
+  color: #faf7f0;
+}
+.ct-badge {
+  font-size: 8.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #6d4a2c;
+  border: 1px solid rgba(122, 86, 52, 0.32);
+  border-radius: 999px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.ct-card__label {
+  display: block;
+  font-size: 8.5px;
+  letter-spacing: 1.9px;
+  text-transform: uppercase;
+  color: #8f7b63;
+  margin-bottom: 9px;
+}
+.ct-card__value {
+  display: block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: 23px;
+  line-height: 1.2;
+  letter-spacing: -0.6px;
+  color: #3f3325;
+}
+.ct-card__value--sm {
+  font-size: 19px;
+  letter-spacing: -0.3px;
+  word-break: break-word;
+}
+.ct-card__hint {
+  display: block;
+  margin-top: 10px;
+  font-size: 11.5px;
+  line-height: 1.75;
+  color: #7d6e5c;
+}
+.ct-card__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 20px;
+  font-size: 11px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #6d4a2c;
+}
+.ct-arrow {
+  width: 13px;
+  height: 13px;
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* the call card holds two phone buttons instead of one value */
+.ct-card__calls {
+  display: grid;
+  gap: 8px;
+}
+.ct-call {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 13px;
+  border: 1px solid rgba(63, 51, 37, 0.16);
+  border-radius: 8px;
+  background: #fffdf9;
+  color: #3f3325;
+  text-decoration: none;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 19px;
+  letter-spacing: -0.2px;
+  font-variant-numeric: tabular-nums;
+  transition:
+    border-color 0.22s ease,
+    background 0.22s ease,
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ct-call:hover,
+.ct-call:focus-visible {
+  border-color: rgba(122, 86, 52, 0.45);
+  background: #f7efe2;
+  transform: translateY(-1px);
+}
+.ct-call__hint {
+  font-family: Inter, Arial, sans-serif;
+  font-size: 8.5px;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  color: #a08668;
+}
+
+/* ---- where to find us ---- */
+.ct-find {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 26px;
+  padding: 24px 26px;
+  border: 1px solid rgba(63, 51, 37, 0.16);
+  border-radius: 12px;
+  background: #faf7f0;
+}
+.ct-find__row {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.ct-icon--pin {
+  background: #efe6d7;
+}
+.ct-find__value {
+  display: block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: 21px;
+  letter-spacing: -0.5px;
+}
+.ct-find__hint {
+  display: block;
+  margin-top: 7px;
+  font-size: 11.5px;
+  line-height: 1.75;
+  color: #7d6e5c;
+  max-width: 52ch;
+}
+.ct-find__side {
+  text-align: right;
+}
+.ct-find__book {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 8px;
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: #3f3325;
+  color: #faf7f0;
+  font-size: 11.5px;
+  letter-spacing: 0.2px;
+  text-decoration: none;
+  transition:
+    background 0.22s ease,
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ct-find__book:hover {
+  background: #574733;
+  transform: translateY(-1px);
+}
+
+.ct-note {
+  margin: 22px 0 0;
+  font-size: 11.5px;
+  line-height: 1.8;
+  color: #9e8b75;
+  max-width: 60ch;
+}
+
+@media (max-width: 980px) {
+  .ct-actions {
+    grid-template-columns: 1fr;
+  }
+  .ct-find {
+    grid-template-columns: 1fr;
+  }
+  .ct-find__side {
+    text-align: left;
+  }
+}
+@media (max-width: 640px) {
+  .ct-page {
+    padding: 44px 22px 70px;
+  }
+  .ct-hero h1 {
+    letter-spacing: -1.6px;
+  }
+  .ct-card {
+    padding: 22px 20px 20px;
+  }
+  .ct-card__value {
+    font-size: 20px;
+  }
+  .ct-card__value--sm {
+    font-size: 16.5px;
+  }
+  .ct-find {
+    padding: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ct-card,
+  .ct-call,
+  .ct-find__book,
+  .ct-arrow {
+    transition: none !important;
+  }
+  a.ct-card:hover {
+    transform: none;
+  }
+}

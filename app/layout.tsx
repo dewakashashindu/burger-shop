@@ -9,6 +9,7 @@ import "./menu.css";
 import "./auth.css";
 import "./reserve.css";
 import "./motion-site.css";
+import "./contact.css";
 
 export const metadata: Metadata = {
   title: "Mila Mirissa — Kitchen & Good Company",
@@ -18,12 +19,14 @@ export const metadata: Metadata = {
   // The logo also sits in the browser tab. The version suffix makes browsers
   // replace an older cached icon straight away.
   icons: {
+    // The oval mark, not the whole lock-up — the name is unreadable at 16 px,
+    // so the tab carries the picture and the title carries the name.
     icon: [
-      { url: "/images/mila-mirissa-logo-sm.png?v=2", type: "image/png", sizes: "128x128" },
-      { url: "/images/mila-mirissa-logo.png?v=2", type: "image/png", sizes: "512x512" },
+      { url: "/favicon.ico?v=4", sizes: "16x16 32x32 48x48 64x64", type: "image/x-icon" },
+      { url: "/icon.png?v=4", type: "image/png", sizes: "512x512" },
     ],
-    shortcut: "/images/mila-mirissa-logo-sm.png?v=2",
-    apple: [{ url: "/apple-icon.png?v=2", sizes: "180x180", type: "image/png" }],
+    shortcut: "/favicon.ico?v=4",
+    apple: [{ url: "/apple-icon.png?v=4", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: { capable: true, title: "Mila Mirissa", statusBarStyle: "default" },
 };

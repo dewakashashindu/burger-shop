@@ -12,6 +12,7 @@ import { mountStoryMotion } from "./story-motion";
 import OrderPill from "./OrderPill";
 import SignInFab from "./SignInFab";
 import MotionBoot from "./MotionBoot";
+import ContactContent from "./ContactContent";
 import {
   Suspense,
   useCallback,
@@ -1409,7 +1410,7 @@ function OurStoryContent({
   );
 }
 
-export default function App({ storyPage = false, menuPage = false, initialMenuCategory = "All dishes", authPage, reservePage = false, orderPage = false, startView }: { storyPage?: boolean; menuPage?: boolean; initialMenuCategory?: MenuFilter; authPage?: AuthStage; reservePage?: boolean; orderPage?: boolean; startView?: "reserve" }) {
+export default function App({ storyPage = false, menuPage = false, contactPage = false, initialMenuCategory = "All dishes", authPage, reservePage = false, orderPage = false, startView }: { storyPage?: boolean; menuPage?: boolean; contactPage?: boolean; initialMenuCategory?: MenuFilter; authPage?: AuthStage; reservePage?: boolean; orderPage?: boolean; startView?: "reserve" }) {
   const router = useRouter();
   const [selectedDish, setSelectedDish] = useState<MenuDish | null>(null);
   const [storyDetail, setStoryDetail] =
@@ -1579,7 +1580,7 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
             </Link>
           ))}
           <Link href="/menu" className={menuPage ? "active" : ""} aria-current={menuPage ? "page" : undefined}>The menu</Link>
-          <button onClick={() => open("visit")}>Contact us</button>
+          <Link href="/contact" className={contactPage ? "active" : ""} aria-current={contactPage ? "page" : undefined} onClick={() => setMobileMenu(false)}>Contact us</Link>
           <button
             className="button button-outline"
             onClick={() => open("booking")}
@@ -1641,13 +1642,15 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
               The menu
               <Arrow />
             </Link>
-            <button
-              onClick={() => open("visit")}
+            <Link
+              href="/contact"
+              onClick={() => setMobileMenu(false)}
+              aria-current={contactPage ? "page" : undefined}
               style={{ transitionDelay: mobileMenu ? "340ms" : "0ms" }}
             >
               Contact us
               <Arrow />
-            </button>
+            </Link>
           </nav>
           <div className="mobile-menu-bottom">
             <span className="eyebrow">A little pause. A lovely meal.</span>
@@ -1661,12 +1664,14 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
         </div>
       </div>
       <main id="main">
-        {menuPage ? (
+        {contactPage ? (
+          <ContactContent />
+        ) : menuPage ? (
           <MenuContent initialCategory={initialMenuCategory} onBooking={() => open("booking")} onDish={(dish) => { setSelectedDish(dish); open("dish"); }} />
         ) : storyPage ? (
           <OurStoryContent
             onBooking={() => open("booking")}
-            onLocation={() => open("visit")}
+            onLocation={() => router.push("/contact")}
             onInfo={(key) => {
               setStoryDetail(key);
               open("storyDetails");
@@ -2143,7 +2148,7 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => open("visit")}>Contact us</button>
+                  <Link href="/contact">Contact us</Link>
                 </li>
                 <li>
                   <a href={`tel:${RESTAURANT.phones[0]}`}>{RESTAURANT.phones[0]}</a>
