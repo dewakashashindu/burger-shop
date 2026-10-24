@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CATS, DISHES, PACKAGES, PHOTO, ROOMS, money, type Dish, type Room } from "./booking-data";
 import type { MenuDish } from "../menu-data";
+import { forgetGuest, getGuest, rememberGuest, useGuest } from "../session";
 
 type View =
   | "choose"
@@ -46,6 +47,9 @@ const SEATING = ["No preference", "Window", "Garden terrace", "Centre of the roo
 // Reading the clock is impure, so it lives outside the component: render stays pure,
 // and only the click handlers ever ask for the time.
 const nowMs = () => Date.now();
+// A short reference for a table/room request — module scope keeps render pure.
+const bookingRef = (prefix: "MC-TBL" | "MC-STAY") =>
+  `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
 
 const phoneOk = (v: string) => {
   const digits = v.replace(/[\s()-]/g, "");
@@ -202,12 +206,35 @@ function TextArea({
   );
 }
 
-export default function BookingFlow({ start = "choose" }: { start?: "choose" | "table" | "rooms" | "order" }) {
-  const [view, setView] = useState<View>(start === "order" ? "order" : "choose");
+export default function BookingFlow({ start = "choose" }: { start?: "choose" | "table" | "rooms" | "order" | "reserve" }) {
+  const [view, setView] = useState<View>(start === "order" ? "order" : start === "reserve" ? "reserve" : "choose");
   const [kind, setKind] = useState<Kind>("table");
   const [ref, setRef] = useState("");
   const [errors, setErrors] = useState<Errors>({});
   const [toast, setToast] = useState("");
+
+  // Sign-in happens at the very end: the guest fills the form first, and only
+  // then is asked who they are. Nothing typed here is lost in the meantime.
+  const guest = useGuest();
+  const [gate, setGate] = useState({ open: false, phone: "", password: "", error: "" });
+  const pendingAction = useRef<null | (() => void)>(null);
+
+  /** Runs `action` straight away when the guest is known, otherwise asks first. */
+  const needSignIn = (action: () => void, phone: string, name = "") => {
+    if (getGuest()) {
+      action();
+      return;
+    }
+    pendingAction.current = action;
+    setGate({ open: true, phone: phone.trim(), password: "", error: "" });
+    if (!name) return;
+  };
+  const finishGate = () => {
+    const action = pendingAction.current;
+    pendingAction.current = null;
+    setGate({ open: false, phone: "", password: "", error: "" });
+    action?.();
+  };
 
   const [t, setT] = useState({
     name: "",
@@ -333,6 +360,77 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     return null;
   };
 
+  // ---------------------------------------------------------------- sign in
+  const gateLabel =
+    view === "checkout" ? "place this order"
+      : view === "table" ? "confirm this table"
+        : "confirm this stay";
+  const submitGate = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (gate.phone.replace(/\D/g, "").length < 9) {
+      setGate((old) => ({ ...old, error: "Enter the phone number for this booking." }));
+      return;
+    }
+    if (!gate.password.trim()) {
+      setGate((old) => ({ ...old, error: "Enter your password." }));
+      return;
+    }
+    // Sign-in is not connected to an account service yet — this only remembers
+    // the tab, exactly like the auth screen does.
+    rememberGuest({ name: order.name || t.name || r.name, phone: gate.phone });
+    finishGate();
+  };
+  const signInCard = gate.open ? (
+    <form className="signin-card" onSubmit={submitGate} aria-labelledby="signin-title">
+      <span className="eyebrow">ONE LAST STEP</span>
+      <h4 id="signin-title">Sign in to {gateLabel}</h4>
+      <p>Your details, the time and your cart are kept — nothing is charged on this website.</p>
+      <div className="form-grid">
+        <Field
+          id="signin-phone"
+          label="Phone number"
+          value={gate.phone}
+          onChange={(v) => { setGate((old) => ({ ...old, phone: v, error: "" })); }}
+          placeholder="07X XXX XXXX"
+          inputMode="tel"
+          autoComplete="tel"
+        />
+        <Field
+          id="signin-password"
+          label="Password"
+          type="password"
+          value={gate.password}
+          onChange={(v) => { setGate((old) => ({ ...old, password: v, error: "" })); }}
+          placeholder="Enter your password"
+          autoComplete="current-password"
+        />
+      </div>
+      {gate.error && <p className="err" role="alert">{gate.error}</p>}
+      <div className="signin-actions">
+        <button className="btn" type="submit">Log in &amp; {gateLabel} <Arrow /></button>
+        <button
+          className="text-link"
+          type="button"
+          onClick={() => { pendingAction.current = null; setGate({ open: false, phone: "", password: "", error: "" }); }}
+        >
+          Not now
+        </button>
+      </div>
+    </form>
+  ) : null;
+  const signedInLine = guest ? (
+    <p className="signed-in">
+      Signed in as <b>{guest.phone}</b>
+      <button
+        type="button"
+        className="text-link"
+        onClick={() => { forgetGuest(); }}
+      >
+        Not you?
+      </button>
+    </p>
+  ) : null;
+
   const dishRefs = useRef<Record<string, HTMLImageElement | null>>({});
   const cartRef = useRef<HTMLSpanElement | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -392,8 +490,12 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     if (!t.time) next.time = "Choose a seating time.";
     setErrors(next);
     if (Object.keys(next).length) return;
+    if (!getGuest()) {
+      needSignIn(() => confirmTable(), t.phone, t.name);
+      return;
+    }
     setKind("table");
-    setRef(`MC-TBL-${Math.floor(1000 + Math.random() * 9000)}`);
+    setRef(bookingRef("MC-TBL"));
     setView("success");
   };
 
@@ -407,8 +509,12 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     if (r.idno.trim().length < 5) next.idno = "Enter the NIC or passport number.";
     setErrors(next);
     if (Object.keys(next).length) return;
+    if (!getGuest()) {
+      needSignIn(() => confirmRoom(), r.phone, r.name);
+      return;
+    }
     setKind("room");
-    setRef(`MC-STAY-${Math.floor(1000 + Math.random() * 9000)}`);
+    setRef(bookingRef("MC-STAY"));
     setView("success");
   };
 
@@ -426,6 +532,10 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     if (placeMsg) next.location = placeMsg;
     setErrors(next);
     if (Object.keys(next).length) return;
+    if (!getGuest()) {
+      needSignIn(() => confirmOrder(), order.phone, order.name);
+      return;
+    }
 
     setPlacing(true);
     setPlaceError("");
@@ -460,7 +570,9 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
         return;
       }
 
-      setRef([data.tabelNo, data.orderNo ? `order ${data.orderNo}` : ""].filter(Boolean).join(" · "));
+      // The guest reads the table number and the bill number — the same pair
+      // the POS prints: DL-0004 · INV-20261024-004
+      setRef([data.tabelNo, data.invoiceNo].filter(Boolean).join(" · "));
       setKind("order");
       setView("success");
     } catch {
@@ -531,7 +643,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
         <figure className="entry-art reveal" style={{ ["--d" as string]: "80ms" }}>
           <Image src={PHOTO.restaurant} alt="Warm restaurant interior with olive banquettes and sunlit tables" width={1376} height={768} sizes="(max-width:900px) 100vw, 55vw" priority />
           <figcaption>
-            <span className="eyebrow" style={{ color: "#5f6c54" }}>A LITTLE PAUSE. A LOVELY MEAL.</span>
+            <span className="eyebrow" style={{ color: "#6b5842" }}>A LITTLE PAUSE. A LOVELY MEAL.</span>
             <h2>Good food.<br /><em>Good company.</em></h2>
             <p>Your next little occasion starts<br />with a warm welcome.</p>
           </figcaption>
@@ -552,7 +664,12 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
               <span className="go"><Arrow /></span>
             </button>
           </div>
-          <p className="micro" style={{ marginTop: 18 }}>You can change your plan at any time.</p>
+          <ul className="entry-facts">
+            <li>Open 11:00 – 21:30</li>
+            <li>Mirissa · Beach Road</li>
+            <li>Table · Room · Takeaway</li>
+          </ul>
+          <p className="micro" style={{ marginTop: 14 }}>You can change your plan at any time.</p>
         </div>
       </section>
     </main>
@@ -568,18 +685,34 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
           <p className="lede">Tell us what you’re planning and we’ll take it from there.</p>
         </div>
       </div>
-      <div className="mode-cards" style={{ maxWidth: 720 }}>
-        <button className="mode-card reveal" style={{ ["--d" as string]: "60ms" }} type="button" onClick={() => go("table", "table")}>
-          <span className="ic"><TableIcon /></span>
-          <span><strong>Table reservation</strong><span>A short form — your details, date and time.</span></span>
-          <span className="go"><Arrow /></span>
+      <div className="pick-grid">
+        <button className="pick-card reveal" style={{ ["--d" as string]: "60ms" }} type="button" onClick={() => go("table", "table")}>
+          <span className="ph"><Image src={PHOTO.restaurant} alt="The dining room at Mila Mirissa" width={720} height={420} sizes="(max-width:900px) 100vw, 46vw" /></span>
+          <span className="body">
+            <span className="ic"><TableIcon /></span>
+            <strong>Table reservation</strong>
+            <span className="txt">Your details, date and time. We hold the table for 15 minutes.</span>
+            <span className="meta">2 – 8 guests · about 90 minutes · no card needed</span>
+            <span className="go">Reserve a table <Arrow /></span>
+          </span>
         </button>
-        <button className="mode-card reveal" style={{ ["--d" as string]: "150ms" }} type="button" onClick={() => go("rooms", "room")}>
-          <span className="ic"><BedIcon /></span>
-          <span><strong>Room reservation</strong><span>Browse rooms and packages, pick your dates and stay with us.</span></span>
-          <span className="go"><Arrow /></span>
+        <button className="pick-card reveal" style={{ ["--d" as string]: "150ms" }} type="button" onClick={() => go("rooms", "room")}>
+          <span className="ph"><Image src="/images/room-garden.jpg" alt="A garden room at Mila Mirissa" width={720} height={420} sizes="(max-width:900px) 100vw, 46vw" /></span>
+          <span className="body">
+            <span className="ic"><BedIcon /></span>
+            <strong>Room reservation</strong>
+            <span className="txt">Garden, family or twin — breakfast included, slow mornings guaranteed.</span>
+            <span className="meta">From USD 95 a night · 1 – 4 guests</span>
+            <span className="go">See the rooms <Arrow /></span>
+          </span>
         </button>
       </div>
+      <ul className="entry-facts" style={{ marginTop: 26 }}>
+        <li>Open 11:00 – 21:30</li>
+        <li>Mirissa · Beach Road</li>
+        <li>Table · Room · Takeaway</li>
+      </ul>
+      <p className="micro" style={{ marginTop: 16 }}>Not sure yet? Ask at the counter — we’ll help you choose.</p>
     </main>
   );
 
@@ -642,6 +775,8 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
             <TextArea id="tnote" label="Special requests" value={t.note} onChange={(v) => setT({ ...t, note: v })} placeholder="Allergies, a birthday, a high chair, anything else we should know…" />
           </div>
           <p className="micro" style={{ margin: "4px 0 0" }}>Please mention any allergies or dietary needs in the special requests box.</p>
+          {signInCard}
+          {signedInLine}
           <div className="actions">
             <span className="note">Your table is held for 15 minutes after the seating time.</span>
             <button className="btn" type="button" onClick={confirmTable}>Confirm reservation <Arrow /></button>
@@ -843,6 +978,8 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
             </div>
             <TextArea id="rnote" label="Special requests" value={r.note} onChange={(v) => setR({ ...r, note: v })} placeholder="Late arrival, dietary needs, a quiet room…" />
           </div>
+          {signInCard}
+          {signedInLine}
           <div className="actions">
             <button className="text-link" type="button" onClick={() => go("room")}><Left /> Back to room</button>
             <button className="btn" type="button" onClick={confirmRoom}>Confirm stay <Arrow /></button>
@@ -1188,6 +1325,8 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
           </div>
           {errors.cart && <p className="err" role="alert">{errors.cart}</p>}
           {placeError && <p className="err" role="alert">{placeError}</p>}
+          {signInCard}
+          {signedInLine}
           <div className="actions">
             <button className="text-link" type="button" onClick={() => go("cart")} disabled={placing}><Left /> Back to cart</button>
             <button className="btn" type="button" onClick={confirmOrder} disabled={placing} aria-busy={placing}>
@@ -1272,6 +1411,10 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
               </button>
             )}
             <button className="ghost-link" type="button" onClick={() => go("choose")}>Start again</button>
+            <Link className="head-logo" href="/" aria-label="Mila Mirissā — home" title="Mila Mirissā">
+              <span className="head-logo-name">Mila Mirissā</span>
+              <Image className="head-logo-img" src="/images/mila-mirissa-logo-sm.png" alt="" width={88} height={88} />
+            </Link>
           </div>
         </div>
       </header>

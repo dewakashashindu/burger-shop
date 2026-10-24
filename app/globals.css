@@ -2,11 +2,11 @@
 
 @layer base {
   :root {
-    color: #354333;
+    color: #3f3325;
     background: #f5f1e9;
     font-synthesis: none;
     --cream: #f5f1e9;
-    --olive: #354333;
+    --olive: #3f3325;
     --line: #35433326;
   }
   html,
@@ -53,13 +53,13 @@
   }
   button:focus-visible,
   a:focus-visible {
-    outline: 2px solid #718655;
+    outline: 2px solid #8c6539;
     outline-offset: 6px;
   }
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible {
-    outline: 2px solid #718655;
+    outline: 2px solid #8c6539;
     outline-offset: 2px;
   }
   button {
@@ -72,8 +72,8 @@
     display: block;
   }
   ::selection {
-    background: #ced5c1;
-    color: #253123;
+    background: #d4c8b8;
+    color: #2f2418;
   }
 }
 .app-shell {
@@ -131,7 +131,7 @@
   background: var(--olive);
 }
 .button-dark:hover {
-  background: #243022;
+  background: #2e2318;
 }
 .button-outline {
   border-color: #35433380;
@@ -295,12 +295,12 @@ h3 em {
   margin-top: 13px;
   margin-left: 3px;
   font-weight: 400;
-  color: #7f8a65;
+  color: #8b6e4c;
 }
 .hero-description {
   font-size: 11px;
   line-height: 1.95;
-  color: #56604f;
+  color: #5d5040;
   margin: 0;
 }
 .hero-actions {
@@ -337,7 +337,7 @@ h3 em {
   font-weight: 500;
 }
 .hero-footnote span {
-  color: #7d8274;
+  color: #7b6f63;
   font-size: 8px;
 }
 .hero-visual {
@@ -399,7 +399,7 @@ h3 em {
 .scroll-hint i {
   width: 3px;
   height: 3px;
-  background: #8f967f;
+  background: #947e65;
   border-radius: 50%;
 }
 .scroll-arrow {
@@ -437,7 +437,7 @@ h2 {
   font-size: 10px;
   line-height: 1.8;
   margin: 0 0 18px;
-  color: #606752;
+  color: #655441;
 }
 .kitchen-intro-right .text-link {
   font-size: 10px;
@@ -613,7 +613,7 @@ button.circle-button:hover {
   gap: 25px;
   padding: 23px 0 27px;
   font-size: 8px;
-  color: #626d58;
+  color: #6b5a47;
 }
 .kitchen-bottom > svg {
   width: 28px;
@@ -652,7 +652,7 @@ button.circle-button:hover {
 .story-heading p {
   font-size: 10px;
   line-height: 1.9;
-  color: #646c59;
+  color: #695a48;
   margin: 23px 0 25px;
 }
 .story-pictures {
@@ -804,7 +804,7 @@ button.circle-button:hover {
   font-family: Georgia, serif;
   font-size: 16px;
   font-style: italic;
-  color: #69715d;
+  color: #6e5e4c;
 }
 .footer-links {
   display: flex;
@@ -823,7 +823,7 @@ button.circle-button:hover {
   width: 12px;
 }
 .footer-links > span {
-  color: #7c8271;
+  color: #7c6e5f;
 }
 .dialog-backdrop {
   position: fixed;
@@ -879,13 +879,13 @@ button.circle-button:hover {
 .dialog-intro {
   font-size: 12px;
   line-height: 1.8;
-  color: #68725c;
+  color: #705e4a;
   margin: 18px 0;
 }
 .notice {
   padding: 13px 16px;
   font-size: 10px;
-  background: #e7e8db;
+  background: #eae1d4;
   border: 1px solid #35433315;
   border-radius: 6px;
   line-height: 1.8;
@@ -924,7 +924,7 @@ button.circle-button:hover {
 }
 .menu-items p {
   font-size: 11px;
-  color: #69715f;
+  color: #6d5f4e;
   line-height: 1.8;
   margin: 0;
   max-width: 560px;
@@ -941,7 +941,7 @@ button.circle-button:hover {
 .privacy-note {
   font-size: 9px;
   line-height: 1.8;
-  color: #7c8272;
+  color: #7b6f60;
   margin: 18px 0;
 }
 .booking-form {
@@ -969,17 +969,17 @@ button.circle-button:hover {
   border: 1px solid #35433335;
   border-radius: 5px;
   font-size: 12px;
-  color: #354333;
+  color: #3f3325;
 }
 .booking-form textarea {
   resize: vertical;
 }
 .optional {
   display: inline;
-  color: #7c8272;
+  color: #7b6f60;
 }
 .saved-message {
-  background: #e0e9d9;
+  background: #ebe1d1;
   border-radius: 6px;
   margin: 18px 0 0;
   padding: 16px;
@@ -1025,7 +1025,7 @@ button.circle-button:hover {
 .story-text {
   font-size: 13px;
   line-height: 1.9;
-  color: #626d58;
+  color: #6b5a47;
 }
 @keyframes fade-in {
   from {
@@ -1605,12 +1605,126 @@ button.circle-button:hover {
   padding: 12px 22px;
   font-size: 11px;
   line-height: 1.7;
-  background: #e0e9d9;
-  color: #354333;
+  background: #ebe1d1;
+  color: #3f3325;
   text-align: center;
 }
 .no-script-note a {
   text-decoration: underline;
   text-underline-offset: 3px;
   margin-left: 14px;
+}
+
+/* ---------- Order now: the small brown pill that follows the guest ---------- */
+.order-pill {
+  position: fixed;
+  right: 26px;
+  bottom: 24px;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 20px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #8a6136, #6d4a2c);
+  color: #fdf7ee;
+  font: 600 12.5px/1 Inter, Arial, sans-serif;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  box-shadow:
+    0 12px 26px -10px rgba(95, 65, 38, 0.75),
+    0 0 0 5px rgba(122, 86, 52, 0.12);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.order-pill:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 16px 30px -10px rgba(95, 65, 38, 0.8),
+    0 0 0 6px rgba(122, 86, 52, 0.16);
+}
+.order-pill:focus-visible {
+  outline: 2px solid #8a6136;
+  outline-offset: 4px;
+}
+.order-pill svg {
+  width: 13px;
+  height: 13px;
+  opacity: 0.85;
+}
+.order-pill__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f6e3c8;
+}
+@media (max-width: 767px) {
+  .order-pill {
+    right: 16px;
+    bottom: 16px;
+    padding: 12px 17px;
+    font-size: 12px;
+  }
+}
+
+/* Sign in — a quiet chip pinned to the bottom-right corner on every page. */
+.signin-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 17px;
+  border-radius: 999px;
+  border: 1px solid rgba(122, 86, 52, 0.32);
+  background: rgba(250, 248, 241, 0.94);
+  color: #4a3a28;
+  font: 600 12px/1 Inter, Arial, sans-serif;
+  letter-spacing: 0.1px;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 10px 24px -16px rgba(95, 65, 38, 0.85);
+  backdrop-filter: blur(12px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.signin-fab svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.9;
+}
+.signin-fab.is-stacked {
+  bottom: 82px;
+}
+.signin-fab:hover {
+  transform: translateY(-1px);
+  background: #fdfaf4;
+  border-color: rgba(122, 86, 52, 0.5);
+  box-shadow: 0 14px 28px -16px rgba(95, 65, 38, 0.9);
+}
+.signin-fab:focus-visible {
+  outline: 2px solid #8a6136;
+  outline-offset: 4px;
+}
+.signin-fab.is-in {
+  cursor: default;
+  color: #6d4a2c;
+  border-color: rgba(122, 86, 52, 0.24);
+  background: rgba(246, 240, 230, 0.94);
+}
+.signin-fab.is-in:hover {
+  transform: none;
+  box-shadow: 0 10px 24px -16px rgba(95, 65, 38, 0.85);
+}
+@media (max-width: 767px) {
+  .signin-fab {
+    right: 16px;
+    bottom: 16px;
+    padding: 10px 14px;
+    font-size: 11.5px;
+  }
+  .signin-fab.is-stacked {
+    bottom: 68px;
+  }
 }

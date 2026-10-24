@@ -16,7 +16,7 @@
 .story-page-shell .story-content {
   margin: 0;
   background: #f5f1e9;
-  color: #354333;
+  color: #3f3325;
   font:
     14px MicroEChefStory,
     Arial,
@@ -34,7 +34,7 @@
 }
 .story-page-shell .story-content button:focus-visible,
 .story-page-shell .story-content a:focus-visible {
-  outline: 2px solid #7c965d;
+  outline: 2px solid #9b703f;
   outline-offset: 5px;
 }
 .story-page-shell .story-content button {
@@ -63,7 +63,7 @@
   font-size: 8px;
   line-height: 1.5;
   background: #f5f1e9e6;
-  color: #354333;
+  color: #3f3325;
   padding: 5px 8px;
   border-radius: 20px;
 }
@@ -119,7 +119,7 @@
 }
 .story-page-shell .story-content p {
   line-height: 1.85;
-  color: #717863;
+  color: #756451;
   font-size: 13px;
 }
 .story-page-shell .story-content small {
@@ -143,14 +143,14 @@
   min-height: 44px;
   padding: 13px 23px;
   border-radius: 50px;
-  background: #354333;
+  background: #3f3325;
   color: #f5f1e9;
   font-size: 11px;
   line-height: 1.5;
 }
 .story-page-shell .story-content .pill.light {
   background: #f5f1e9;
-  color: #354333;
+  color: #3f3325;
 }
 .story-page-shell .story-content .studio {
   position: sticky;
@@ -173,7 +173,7 @@
 .story-page-shell .story-content .studio-label small {
   display: block;
   font-size: 9px;
-  color: #737c66;
+  color: #796753;
   margin-top: 5px;
 }
 .story-page-shell .story-content .studio-tabs {
@@ -189,7 +189,7 @@
   white-space: nowrap;
 }
 .story-page-shell .story-content .studio-tabs button[aria-selected="true"] {
-  background: #354333;
+  background: #3f3325;
   color: #f5f1e9;
 }
 .story-page-shell .story-content .studio-tabs button small {
@@ -199,11 +199,11 @@
 .story-page-shell .story-content .preview-note {
   text-align: center;
   padding: 9px 20px;
-  background: #edeee6;
+  background: #eee9e1;
   font-size: 9px;
   line-height: 1.6;
   letter-spacing: 0.05px;
-  color: #727b65;
+  color: #786652;
 }
 .story-page-shell .story-content .site-nav {
   display: flex;
@@ -286,7 +286,7 @@
   display: inline-block;
   vertical-align: top;
   margin-left: 16px;
-  color: #9ba17b;
+  color: #a88357;
   transform: rotate(-15deg);
 }
 .story-page-shell .story-content .hero-caption {
@@ -313,7 +313,7 @@
 .story-page-shell .story-content .intro .lead {
   font-size: 20px;
   line-height: 1.55;
-  color: #354333;
+  color: #3f3325;
 }
 .story-page-shell .story-content .intro-copy > p + p {
   margin-top: 23px;
@@ -336,7 +336,7 @@
 .story-page-shell .story-content .draft-note {
   font-size: 10px !important;
   line-height: 1.65 !important;
-  color: #7b826d !important;
+  color: #7e6d5a !important;
 }
 .story-page-shell .story-content .chef {
   display: grid;
@@ -358,7 +358,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border-left: 2px solid #9aa882;
+  border-left: 2px solid #af895d;
   padding-left: 15px;
   margin: 30px 0 22px;
 }
@@ -368,7 +368,7 @@
 }
 .story-page-shell .story-content .chef-id span {
   font-size: 10px;
-  color: #7c846e;
+  color: #806e5a;
 }
 .story-page-shell .story-content .chef-copy > p {
   max-width: 400px;
@@ -386,7 +386,7 @@
   font:
     9px/1.7 MicroEChefStory,
     sans-serif;
-  color: #828876;
+  color: #827363;
   letter-spacing: 0;
   margin-top: 8px;
 }
@@ -399,7 +399,7 @@
 .story-page-shell .story-content .facilities-card {
   border-radius: 10px;
   padding: 42px;
-  background: #e6e9dc;
+  background: #ebe2d5;
 }
 .story-page-shell .story-content .facilities-card {
   background: #eeeade;
@@ -412,7 +412,7 @@
 .story-page-shell .story-content .visit article > p:not(.draft-note) {
   margin-top: 25px;
   font-size: 12px;
-  color: #354333;
+  color: #3f3325;
 }
 .story-page-shell .story-content .visit dl {
   margin: 18px 0 19px;
@@ -429,7 +429,7 @@
 .story-page-shell .story-content .visit dd {
   margin: 0;
   font-size: 10px;
-  color: #7a836c;
+  color: #7f6d58;
 }
 .story-page-shell .story-content .hours-card .pill {
   margin-top: 25px;
@@ -450,7 +450,7 @@
 .story-page-shell .story-content .facility-list svg {
   width: 23px;
   height: 23px;
-  color: #758466;
+  color: #836b50;
 }
 .story-page-shell .story-content .facility-list b {
   display: block;
@@ -460,7 +460,7 @@
 .story-page-shell .story-content .facility-list small {
   display: block;
   font-size: 9px;
-  color: #828b74;
+  color: #86745f;
   margin-top: 6px;
 }
 .story-page-shell .story-content .section-heading {
@@ -511,8 +511,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #e2e6d8;
-  color: #7d8b6e;
+  background: #e8dfd1;
+  color: #897257;
   gap: 12px;
 }
 .story-page-shell .story-content .future-art svg {
@@ -534,7 +534,7 @@
   margin: 20px 0 28px;
 }
 .story-page-shell .story-content .hero-people {
-  background: #354333;
+  background: #3f3325;
   color: #f5f1e9;
 }
 .story-page-shell .story-content .people-inner {
@@ -548,10 +548,10 @@
   font-size: clamp(62px, 6.8vw, 100px);
 }
 .story-page-shell .story-content .hero-people p {
-  color: #d3d9c8;
+  color: #dbd1c1;
 }
 .story-page-shell .story-content .hero-people .eyebrow {
-  color: #c2cdb4;
+  color: #cdbeaa;
 }
 .story-page-shell .story-content .people-photo {
   height: 590px;
@@ -562,7 +562,7 @@
   font-size: 7px;
   letter-spacing: 1.5px;
   margin-top: 48px;
-  color: #bcc8ac;
+  color: #c8b8a1;
 }
 .story-page-shell .story-content .people .chef {
   grid-template-columns: 1fr 1fr;
@@ -583,7 +583,7 @@
 .story-page-shell .story-content .craft-band {
   display: grid;
   grid-template-columns: 1.3fr 1fr;
-  background: #e6e9dc;
+  background: #ebe2d5;
   align-items: center;
   border-radius: 8px;
   overflow: hidden;
@@ -606,7 +606,7 @@
 }
 .story-page-shell .story-content .people .visit {
   border-top: 0;
-  background: #e6e9dc;
+  background: #ebe2d5;
   border-radius: 8px;
   width: calc(100% - 112px);
   padding: 20px;
@@ -653,7 +653,7 @@
   bottom: 75px;
   left: 5%;
   width: 90%;
-  background: #e5e8da;
+  background: #eae1d3;
   box-shadow: 0 5px 25px #3543330a;
   border: 1px solid #35433320;
   border-radius: 7px;
@@ -676,20 +676,20 @@
   border: 0;
 }
 .story-page-shell .story-content .place .hours-card {
-  background: #354333;
+  background: #3f3325;
   color: #f5f1e9;
 }
 .story-page-shell .story-content .place .hours-card p,
 .story-page-shell .story-content .place .hours-card .draft-note,
 .story-page-shell .story-content .place .hours-card dd {
-  color: #d6ddca !important;
+  color: #e0d4c2 !important;
 }
 .story-page-shell .story-content .place .hours-card dl div {
   border-color: #f5f1e93b;
 }
 .story-page-shell .story-content .place .hours-card .pill {
   background: #f5f1e9;
-  color: #354333;
+  color: #3f3325;
 }
 .story-page-shell .story-content .place .chef {
   grid-template-columns: 0.8fr 1.2fr;
@@ -716,7 +716,7 @@
   justify-content: space-between;
   gap: 25px;
   padding: 22px 56px;
-  background: #e6e8dd;
+  background: #e9e2d7;
   border-top: 1px solid #35433326;
 }
 .story-page-shell .story-content .selection-strip strong {
@@ -742,7 +742,7 @@
   border-radius: 12px;
   padding: 30px;
   background: #f5f1e9;
-  color: #354333;
+  color: #3f3325;
 }
 .story-page-shell .story-content .preview-dialog::backdrop {
   background: #26312380;
@@ -766,7 +766,7 @@
 }
 .story-page-shell .story-content .preview-dialog .dialog-notice {
   padding: 13px;
-  background: #e6e9dc;
+  background: #ebe2d5;
   border-radius: 6px;
   font-size: 10px;
   line-height: 1.8;
@@ -778,8 +778,8 @@
   text-align: center;
   font-size: 9px;
   padding: 12px;
-  background: #eeeee6;
-  color: #7b826e;
+  background: #eee9e1;
+  color: #7d6d5b;
 }
 @media (min-width: 1600px) {
   .story-page-shell .story-content .hero-editorial {
@@ -1073,7 +1073,7 @@
     margin-top: 0;
   }
   .story-page-shell .story-content .people .hours-card {
-    background: #e6e9dc;
+    background: #ebe2d5;
   }
   .story-page-shell .story-content .people .facilities-card {
     background: #eeeade;
@@ -1242,7 +1242,7 @@
 .story-page-shell .motion-brand small {
   display: block;
   font-size: 9px;
-  color: #7e856f;
+  color: #816f5b;
   margin-top: 5px;
 }
 .story-page-shell .motion-tools {
@@ -1265,11 +1265,11 @@
     color 0.2s;
 }
 .story-page-shell .motion-tools button:hover {
-  background: #354333;
+  background: #3f3325;
   color: #f5f1e9;
 }
 .story-page-shell .motion-tools button[aria-pressed="true"] {
-  background: #354333;
+  background: #3f3325;
   color: #f5f1e9;
 }
 .story-page-shell .motion-progress {
@@ -1278,7 +1278,7 @@
   left: 0;
   width: 100%;
   height: 2px;
-  background: #87996d;
+  background: #9e794e;
   transform: scaleX(0);
   transform-origin: left;
   pointer-events: none;
@@ -1307,7 +1307,7 @@
   inset: 20px max(40px, calc((100vw - 1280px) / 2));
   overflow: hidden;
   border-radius: 26px;
-  background: #354333;
+  background: #3f3325;
   will-change: inset, border-radius;
 }
 .story-page-shell .hero-image-frame .place-photo {
@@ -1388,13 +1388,13 @@
   left: 12%;
   right: 12%;
   height: 2px;
-  background: #7d9364;
+  background: #977247;
   transform: scaleX(0);
   transition: transform 0.35s;
   transform-origin: left;
 }
 .story-page-shell .hero-stage .place-index button:hover {
-  background: #d6dec8;
+  background: #e2d4bf;
 }
 .story-page-shell .hero-stage .place-index button:hover::after {
   transform: scaleX(1);
@@ -1637,7 +1637,7 @@
   height: 100%;
 }
 .story-page-shell .chef-seal text {
-  fill: #354333;
+  fill: #3f3325;
   font:
     8px MicroEChefStory,
     Arial,
@@ -2078,7 +2078,7 @@
   text-align: center;
   pointer-events: none;
   opacity: 0;
-  color: #354333;
+  color: #3f3325;
 }
 .story-page-shell .hero-paper-copy > span,
 .story-page-shell .hero-paper-copy > small {
@@ -2096,7 +2096,7 @@
 }
 .story-page-shell .hero-paper-copy > small {
   font-size: 7px;
-  color: #808c6f;
+  color: #8a7358;
 }
 .story-page-shell.motion-on .hero-paper-copy {
   opacity: var(--paper-copy, 0);

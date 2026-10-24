@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 import { getAuthDraft, getServerAuthDraft, subscribeAuthDraft, updateAuthDraft } from "./auth-draft";
+import { rememberGuest } from "../session";
 
 export type AuthStage = "login" | "signup" | "forgot-password" | "otp" | "verify-phone" | "reset-password";
 const route = (stage: AuthStage) => `/auth/${stage}`;
@@ -33,6 +34,12 @@ function Steps({ stage }: { stage: AuthStage }) {
 
 export default function AuthScreen({ stage }: { stage: AuthStage }) {
   const router = useRouter();
+  const params = useSearchParams();
+  // Where to go after signing in — the guest may have been sent here mid-order.
+  const next = (() => {
+    const raw = params.get("next") ?? "";
+    return raw.startsWith("/") && !raw.startsWith("//") ? raw : "/reserve";
+  })();
   const draft = useSyncExternalStore(subscribeAuthDraft, getAuthDraft, getServerAuthDraft);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState("");
@@ -65,8 +72,10 @@ export default function AuthScreen({ stage }: { stage: AuthStage }) {
       const password = String(form.get("password") || "");
       if (!draft.phone.trim()) { fail("phone", "Enter your phone number."); return; }
       if (!password) { fail("password", "Enter your password."); return; }
+      // No credential is checked yet — this only remembers the tab.
+      rememberGuest({ name: draft.name, phone: draft.phone });
       clearSecrets();
-      router.push("/reserve");
+      router.push(next);
       return;
     }
     if (stage === "signup") {

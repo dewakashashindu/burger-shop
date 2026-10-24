@@ -121,17 +121,51 @@ const CREATE_INDEXES = [
        ON dbo.Tbl_holdUpsCloudTempWeb (InvoiceNo, IsPaid)`,
 ];
 
-async function ensureSerial(pool, code, start, note = "") {
+// dbo.Tbl_Serials is the same table the POS / QR orders use. Its optional
+// columns (SeriDate, LocCode) must be filled in when a counter is created,
+// otherwise a NOT NULL column would reject the INSERT.
+async function serialsColumns(pool) {
+  const found = await pool.request().query(
+    "SELECT c.name, c.is_nullable FROM sys.columns c WHERE c.object_id = OBJECT_ID('dbo.Tbl_Serials')",
+  );
+  return (found.recordset || []).map((row) => ({
+    name: String(row.name),
+    lower: String(row.name).toLowerCase(),
+    nullable: Boolean(row.is_nullable),
+  }));
+}
+
+function sriLankaToday() {
+  const t = new Date(Date.now() + 330 * 60 * 1000);
+  const y = t.getUTCFullYear();
+  const m = String(t.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(t.getUTCDate()).padStart(2, "0");
+  return { iso: `${y}-${m}-${d}`, compact: `${y}${m}${d}` };
+}
+
+async function ensureSerial(pool, columns, code, start, note = "") {
+  const has = (name) => columns.some((column) => column.lower === name);
   const found = await pool.request().input("code", code).query(
     "SELECT SeriNo FROM dbo.Tbl_Serials WHERE SeriCode = @code",
   );
-  if (found.recordset?.length) {
-    console.log(`  = ${code.padEnd(4)} already there (SeriNo = ${found.recordset[0].SeriNo})`);
+  if ((found.recordset || []).length) {
+    console.log(`  = ${code.padEnd(4)} already there (SeriNo = ${found.recordset[0].SeriNo}) — left alone`);
     return;
   }
-  await pool.request().input("code", code).input("start", start).query(
-    "INSERT INTO dbo.Tbl_Serials (SeriCode, SeriNo) VALUES (@code, @start)",
-  );
+
+  const names = ["SeriCode", "SeriNo"];
+  const values = ["@code", "@start"];
+  if (has("seridate")) {
+    names.push("SeriDate");
+    values.push("@today");
+  }
+  if (has("loccode")) {
+    names.push("LocCode");
+    values.push("@loc");
+  }
+
+  const request = pool.request().input("code", code).input("start", start).input("today", sriLankaToday().iso).input("loc", "");
+  await request.query(`INSERT INTO dbo.Tbl_Serials (${names.join(", ")}) VALUES (${values.join(", ")})`);
   console.log(`  + ${code.padEnd(4)} created (SeriNo = ${start})${note ? `  ⚠ ${note}` : ""}`);
 }
 
@@ -149,10 +183,25 @@ try {
   console.log("  ✓ indexes checked");
 
   console.log("› Counters in dbo.Tbl_Serials");
-  await ensureSerial(pool, "INV", 0, "the website would number invoices from 1 — tell us if the POS expects something else");
-  await ensureSerial(pool, "ODN", 0);
-  await ensureSerial(pool, "DL", 0);
-  await ensureSerial(pool, "PU", 0);
+  const serialColumns = await serialsColumns(pool);
+  const hasSeriDate = serialColumns.some((column) => column.lower === "seridate");
+  console.log(
+    `  · columns: ${serialColumns.map((column) => column.name).join(", ")}${hasSeriDate ? "  (daily invoice reset ON)" : "  (no SeriDate — invoices count on)"}`,
+  );
+
+  await ensureSerial(pool, serialColumns, "INV", 0, "the website would number invoices from 1 — tell us if the POS expects something else");
+  await ensureSerial(pool, serialColumns, "ODN", 0);
+  await ensureSerial(pool, serialColumns, "DL", 0);
+  await ensureSerial(pool, serialColumns, "PU", 0);
+
+  const today = sriLankaToday();
+  const live = await pool.request().input("code", "INV").query(
+    "SELECT SeriNo FROM dbo.Tbl_Serials WHERE SeriCode = @code",
+  );
+  if ((live.recordset || []).length) {
+    console.log(`\n  Next invoice from the website: INV-${today.compact}-${String(Number(String(live.recordset[0].SeriNo).replace(/\D/g, "") || 0) + 1).padStart(3, "0")}`);
+    console.log("  (or -001 again if SeriDate says the counter belongs to an earlier day)");
+  }
 
   const columns = await pool.request().query(
     "SELECT COUNT(*) AS n FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Tbl_holdUpsCloudTempWeb')",

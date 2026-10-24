@@ -105,6 +105,36 @@ export function labelSerial(raw: string, prefix: string): string {
   return `${prefix}-${digits.padStart(4, "0")}`;
 }
 
+// Sri Lanka is UTC+5:30 all year — no daylight saving.
+const LK_OFFSET_MS = 330 * 60 * 1000;
+
+/** Today in Sri Lanka: `20261024` for the invoice, `2026-10-24` for SeriDate. */
+export function sriLankaDay(now: number = Date.now()) {
+  const t = new Date(now + LK_OFFSET_MS);
+  const year = t.getUTCFullYear();
+  const month = String(t.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(t.getUTCDate()).padStart(2, "0");
+  return { iso: `${year}-${month}-${day}`, compact: `${year}${month}${day}` };
+}
+
+/**
+ * The next counter value, exactly like the QR order code:
+ *  - a prefix in the stored value (`DL-0007`) is ignored, the number is 7
+ *  - `daily` + a SeriDate that belongs to another day -> start again at 1
+ *  - otherwise the number goes up by one
+ */
+export function nextCounter(prior: unknown, priorDate: string, todayIso: string, daily: boolean): number {
+  const match = String(prior ?? "").match(/(\d+)\s*$/);
+  const current = match ? Number(match[1]) : 0;
+  if (daily && priorDate && priorDate !== todayIso) return 1;
+  return (Number.isFinite(current) ? current : 0) + 1;
+}
+
+/** `INV-20261024-001` — the same shape the POS prints. */
+export function composeInvoice(counter: number, compactDay: string): string {
+  return `INV-${compactDay}-${String(counter).padStart(3, "0")}`;
+}
+
 /** Validates the browser payload before anything touches the database. */
 export function readWebOrderInput(raw: unknown): WebOrderInput | string {
   const body = (raw ?? {}) as Record<string, unknown>;
@@ -166,34 +196,106 @@ type Tx = {
   request(): TxRequest;
 };
 
-async function nextSerial(tx: Tx, code: string): Promise<string> {
-  const found = await tx
+/** Which optional columns dbo.Tbl_Serials has (SeriDate / LocCode). */
+export type SerialsShape = { date: boolean; loc: boolean };
+let shapeCache: SerialsShape | null = null;
+
+async function readSerialsShape(pool: { request(): TxRequest }): Promise<SerialsShape> {
+  if (shapeCache) return shapeCache;
+  const found = await pool
     .request()
-    .input("code", code)
-    .query<{ SeriNo: unknown }>(
-      "SELECT SeriNo FROM dbo.Tbl_Serials WITH (UPDLOCK, ROWLOCK) WHERE SeriCode = @code",
+    .query<{ name: string }>(
+      "SELECT c.name FROM sys.columns c WHERE c.object_id = OBJECT_ID('dbo.Tbl_Serials')",
     );
+  const names = new Set((found.recordset ?? []).map((row) => String(row.name).toLowerCase()));
+  if (!names.size) throw new Error("dbo.Tbl_Serials could not be read");
+  shapeCache = { date: names.has("seridate"), loc: names.has("loccode") };
+  return shapeCache;
+}
 
-  let current: unknown = found.recordset?.[0]?.SeriNo;
+type SerialArgs = {
+  code: string;
+  locCode?: string;
+  daily?: boolean; // reset on a new day when SeriDate exists
+  format?: (counter: number) => string; // what the guest / POS reads
+  badge?: string; // padded table-number prefix, e.g. DL -> DL-0007
+};
 
-  if (!found.recordset?.length) {
-    // First web order for this code: create the counter at zero, then bump it.
+/**
+ * Takes one number from dbo.Tbl_Serials inside the caller's transaction.
+ * `UPDLOCK, HOLDLOCK` (the same pair the QR order code uses) keeps two
+ * simultaneous orders from ever sharing a number.
+ *
+ * Exported so the allocation rules can be tested against a fake transaction
+ * (this build machine never has the restaurant database).
+ */
+export async function takeSerial(tx: Tx, shape: SerialsShape, args: SerialArgs) {
+  const today = sriLankaDay();
+  const where = shape.loc ? "SeriCode = @code AND LocCode = @loc" : "SeriCode = @code";
+  const loc = (args.locCode ?? "").slice(0, 10);
+  const bind = (request: TxRequest) => {
+    const bound = request.input("code", args.code);
+    return shape.loc ? bound.input("loc", loc) : bound;
+  };
+
+  const found = await bind(tx.request()).query<{ SeriNo: unknown; SeriDate?: unknown }>(
+    `SELECT ${shape.date ? "SeriDate, " : ""}SeriNo
+       FROM dbo.Tbl_Serials WITH (UPDLOCK, HOLDLOCK)
+      WHERE ${where}`,
+  );
+
+  let row = found.recordset?.[0];
+  if (!row) {
+    // No counter for this code yet: start at zero, then bump it below.
+    const columns = ["SeriCode", "SeriNo"];
+    const values = ["@code", "0"];
+    if (shape.date) {
+      columns.push("SeriDate");
+      values.push("@today");
+    }
+    if (shape.loc) {
+      columns.push("LocCode");
+      values.push("@loc");
+    }
     try {
-      await tx.request().input("code", code).query(
-        "INSERT INTO dbo.Tbl_Serials (SeriCode, SeriNo) VALUES (@code, 0)",
+      const request = bind(tx.request()).input("today", today.iso);
+      await request.query(
+        `INSERT INTO dbo.Tbl_Serials (${columns.join(", ")}) VALUES (${values.join(", ")})`,
       );
-      current = 0;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Tbl_Serials has no '${code}' row and it could not be created: ${message}`);
+      throw new Error(`Tbl_Serials has no '${args.code}' row and it could not be created: ${message}`);
     }
+    row = { SeriNo: 0, SeriDate: today.iso };
   }
 
-  const next = bumpSerial(current);
-  await tx.request().input("code", code).input("next", next).query(
-    "UPDATE dbo.Tbl_Serials SET SeriNo = @next WHERE SeriCode = @code",
-  );
-  return next;
+  const priorRaw = row.SeriNo;
+  const priorText = String(priorRaw ?? "");
+  const priorDate = row.SeriDate ? String(row.SeriDate).slice(0, 10) : "";
+  const number = nextCounter(priorRaw, priorDate, today.iso, Boolean(args.daily));
+
+  const label = args.format
+    ? args.format(number)
+    : args.badge
+      ? labelSerial(String(number), args.badge)
+      : String(number);
+
+  // What goes back into SeriNo: a counter, unless the row already holds a
+  // lettered value ("DL-0007") — then keep that style.
+  let stored = String(number);
+  if (/[A-Za-z]/.test(priorText)) stored = args.format ? label : bumpSerial(priorRaw);
+  else if (/^\d+$/.test(priorText) && priorText.length > stored.length) {
+    stored = stored.padStart(priorText.length, "0");
+  }
+
+  const sets = ["SeriNo = @next"];
+  if (shape.date) sets.push("SeriDate = @today");
+  await bind(tx.request())
+    .input("next", stored)
+    .input("today", today.iso)
+    .query(`UPDATE dbo.Tbl_Serials SET ${sets.join(", ")} WHERE ${where}`);
+
+  return { number, label, stored };
 }
 
 /**
@@ -246,7 +348,17 @@ export async function saveWebOrder(
   const subtotal = priced.reduce((sum, line) => sum + line.lineTotal, 0);
   const deliveryFee = order.orderType === "DL" ? DELIVERY_FEE : 0;
 
-  const pool = (await getPool()) as unknown as { transaction(): Tx };
+  const pool = (await getPool()) as unknown as { transaction(): Tx; request(): TxRequest };
+
+  // Which optional columns Tbl_Serials has — read once, outside the transaction.
+  let shape: SerialsShape;
+  try {
+    shape = await readSerialsShape(pool);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { ok: false, error: { kind: "database", message } };
+  }
+
   const tx = pool.transaction();
 
   try {
@@ -255,12 +367,29 @@ export async function saveWebOrder(
     // 1b. Which restaurant this order belongs to (code for POS, name for the guest).
     const place = await resolveLocation(tx, order.locCode, order.customerLocation ?? "");
 
-    // 2. The three numbers, from Tbl_Serials inside the same transaction.
-    const invoiceNo = await nextSerial(tx, "INV");
-    const orderNo = await nextSerial(tx, "ODN");
-    // TabelNo is the one number the guest sees: DL-0001 / PU-0001.
+    // 2. The numbers, from Tbl_Serials inside the same transaction — the very
+    //    same rules as the QR order code.
+    const today = sriLankaDay();
+
+    //    InvoiceNo: INV-20261024-001, resets on a new day when SeriDate exists.
+    const invoice = await takeSerial(tx, shape, {
+      code: "INV",
+      locCode: place.code,
+      daily: true,
+      format: (counter) => composeInvoice(counter, today.compact),
+    });
+    const invoiceNo = invoice.label;
+
+    //    OrderNo: a plain number, a fresh one for every confirm.
+    const orderNo = String(
+      (await takeSerial(tx, shape, { code: "ODN", locCode: place.code })).number,
+    );
+
+    //    TabelNo: the number the guest reads — DL-0001 / PU-0001.
     const tabelCode = order.orderType === "DL" ? "DL" : "PU";
-    const tabelNo = labelSerial(await nextSerial(tx, tabelCode), tabelCode);
+    const tabelNo = (
+      await takeSerial(tx, shape, { code: tabelCode, locCode: place.code, badge: tabelCode })
+    ).label;
 
     // 3. The next RowLine in the web table (POS reads/deletes these rows itself).
     const maxRow = await tx

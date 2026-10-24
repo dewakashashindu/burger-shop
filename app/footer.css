@@ -7,38 +7,38 @@
   width: 100%;
   min-height: clamp(740px, 62.5vw, 900px);
   background: #f3f0e8;
-  color: #344131;
+  color: #3d3124;
 }
 .dining-footer__stage { position: absolute; inset: 0; z-index: -2; pointer-events: none; overflow: hidden; }
 .dining-footer__ambience { position: absolute; inset: 9% 0 -9%; overflow: hidden; }
 .dining-footer__image { width: 100%; height: 100%; object-fit: cover; object-position: 50% 100%; animation: dining-pan 28s ease-in-out infinite alternate; transform-origin: 50% 70%; }
 .dining-footer__stage::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, #f3f0e8 0%, #f3f0e8f7 26%, #f3f0e8c9 44%, #f3f0e829 65%, transparent 77%); }
-.dining-footer__fog { position: absolute; inset: auto 0 0; height: 22%; z-index: -1; pointer-events: none; background: linear-gradient(to top, #e8eade 0%, #e8eadeaa 30%, transparent 100%); }
+.dining-footer__fog { position: absolute; inset: auto 0 0; height: 22%; z-index: -1; pointer-events: none; background: linear-gradient(to top, #ebe3d8 0%, #e8eadeaa 30%, transparent 100%); }
 .dining-footer__content { position: relative; display: grid; grid-template-columns: 1.85fr 1fr 1fr .85fr; gap: 28px; max-width: 1120px; margin: 0 auto; padding: 79px 0 320px; }
 .dining-brand__logo { display: inline-flex; gap: 10px; align-items: center; font-size: 17px; font-weight: 500; letter-spacing: -.025em; }
-.dining-brand__mark { position: relative; display: grid; place-items: center; width: 30px; height: 30px; flex-shrink: 0; border-radius: 8px; background: linear-gradient(#526047, #263222 65%); color: #f6f4e9; box-shadow: 0 1px 2px #0004; font: italic 24px Georgia, serif; padding-bottom: 3px; }
+.dining-brand__mark { position: relative; display: grid; place-items: center; width: 30px; height: 30px; flex-shrink: 0; border-radius: 8px; background: linear-gradient(#614d36, #302418 65%); color: #f6f4e9; box-shadow: 0 1px 2px #0004; font: italic 24px Georgia, serif; padding-bottom: 3px; }
 .dining-brand__mark::after { content: ""; position: absolute; left: 24%; right: 24%; bottom: 14%; height: 1px; background: #f5f1e98c; }
 .dining-brand__mark--photo { background: #f3ece1; border-radius: 50%; padding: 0; box-shadow: 0 1px 3px #00000022; }
 .dining-brand__mark--photo::after { display: none; }
 .dining-brand__mark--photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
 .dining-brand h2 { font-family: inherit; font-size: 20px; font-weight: 600; line-height: 1.25; letter-spacing: -.045em; margin: 20px 0 0; }
-.dining-brand__text { max-width: 352px; font-size: 13.7px; line-height: 1.55; letter-spacing: -.012em; color: #68705d; margin: 17px 0 0; }
-.dining-brand__cta { display: inline-flex; align-items: center; justify-content: center; gap: 21px; min-height: 36px; margin-top: 20px; padding: 8px 15px; border: 0; border-radius: 7px; background: #344131; color: #f3f0e8; font-size: 12px; font-weight: 500; transition: background .2s; }
+.dining-brand__text { max-width: 352px; font-size: 13.7px; line-height: 1.55; letter-spacing: -.012em; color: #6c5d4c; margin: 17px 0 0; }
+.dining-brand__cta { display: inline-flex; align-items: center; justify-content: center; gap: 21px; min-height: 36px; margin-top: 20px; padding: 8px 15px; border: 0; border-radius: 7px; background: #3d3124; color: #f3f0e8; font-size: 12px; font-weight: 500; transition: background .2s; }
 .dining-brand__cta svg { width: 13px; height: 13px; }
-.dining-brand__cta:hover { background: #202b1d; }
-.dining-brand__copyright { font-size: 11px; color: #777d6a; margin: 23px 0 0; line-height: 1.6; }
+.dining-brand__cta:hover { background: #291f14; }
+.dining-brand__copyright { font-size: 11px; color: #786958; margin: 23px 0 0; line-height: 1.6; }
 .dining-brand__care { display: flex; align-items: center; gap: 6px; margin: 18px 0 0; font-size: 11px; line-height: 1.6; }
-.dining-brand__care svg { width: 15px; height: 17px; color: #7b8c67; flex-shrink: 0; }
+.dining-brand__care svg { width: 15px; height: 17px; color: #8d6f4e; flex-shrink: 0; }
 .dining-brand__chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
 .dining-brand__chips > span { display: inline-flex; align-items: center; gap: 5px; min-height: 25px; padding: 4px 8px; border: 1px solid #34413124; border-radius: 999px; background: #ffffffb3; font-size: 10px; line-height: 1.5; white-space: nowrap; }
-.dining-brand__chips i { width: 5px; height: 5px; background: #7b9b59; border-radius: 50%; box-shadow: 0 0 0 2px #7b9b5929; }
+.dining-brand__chips i { width: 5px; height: 5px; background: #9c7140; border-radius: 50%; box-shadow: 0 0 0 2px #7b9b5929; }
 .dining-brand__chips svg { width: 10px; height: 10px; }
 .dining-col h3 { font-family: inherit; margin: 7px 0 24px; font-size: 16px; font-weight: 600; line-height: 1.2; letter-spacing: -.04em; }
 .dining-col ul { display: grid; gap: 18px; padding: 0; margin: 0; list-style: none; }
 .dining-col a, .dining-col button { display: inline-block; padding: 0; border: 0; background: transparent; text-align: left; font-size: 13.5px; line-height: 1.5; transition: color .2s; }
-.dining-col a:hover, .dining-col button:hover { color: #718655; }
+.dining-col a:hover, .dining-col button:hover { color: #8c6539; }
 .dining-footer__powered { position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); margin: 0; color: #000; font-size: 12px; line-height: 1.5; font-weight: 500; white-space: nowrap; }
-.dining-footer__motion { position: absolute; right: 25px; bottom: 25px; border: 1px solid #34413126; border-radius: 20px; padding: 6px 10px; background: #f3f0e8ba; color: #344131; font-size: 10px; line-height: 1.5; }
+.dining-footer__motion { position: absolute; right: 25px; bottom: 25px; border: 1px solid #34413126; border-radius: 20px; padding: 6px 10px; background: #f3f0e8ba; color: #3d3124; font-size: 10px; line-height: 1.5; }
 .dining-footer.is-paused .dining-footer__image { animation-play-state: paused; }
 @keyframes dining-pan { from { transform: scale(1.01) translateX(-.3%); } to { transform: scale(1.055) translateX(.3%); } }
 @media (max-width: 1279px) {

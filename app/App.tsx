@@ -9,7 +9,10 @@ import SiteFooter from "./SiteFooter";
 import MenuContent, { MenuDishDetails } from "./menu/MenuContent";
 import { MENU_CATEGORIES, type MenuCategory, type MenuDish, type MenuFilter } from "./menu-data";
 import { mountStoryMotion } from "./story-motion";
+import OrderPill from "./OrderPill";
+import SignInFab from "./SignInFab";
 import {
+  Suspense,
   useCallback,
   useEffect,
   useId,
@@ -1186,7 +1189,7 @@ function OurStoryContent({
                 <path
                   d="M46 78c3-17 10-30 24-39M52 65c-16-1-18-11-17-18 13 3 20 8 17 18Zm8-11c-2-13 5-20 14-21 1 11-4 19-14 21Zm-5 15c12-7 20-4 22 1-7 8-15 9-22 5"
                   fill="none"
-                  stroke="#718655"
+                  stroke="#8c6539"
                   strokeWidth="1.1"
                 ></path>
               </svg>
@@ -1406,7 +1409,7 @@ function OurStoryContent({
   );
 }
 
-export default function App({ storyPage = false, menuPage = false, initialMenuCategory = "All dishes", authPage, reservePage = false, orderPage = false }: { storyPage?: boolean; menuPage?: boolean; initialMenuCategory?: MenuFilter; authPage?: AuthStage; reservePage?: boolean; orderPage?: boolean }) {
+export default function App({ storyPage = false, menuPage = false, initialMenuCategory = "All dishes", authPage, reservePage = false, orderPage = false, startView }: { storyPage?: boolean; menuPage?: boolean; initialMenuCategory?: MenuFilter; authPage?: AuthStage; reservePage?: boolean; orderPage?: boolean; startView?: "reserve" }) {
   const router = useRouter();
   const [selectedDish, setSelectedDish] = useState<MenuDish | null>(null);
   const [storyDetail, setStoryDetail] =
@@ -1437,8 +1440,10 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
   const open = (value: Modal) => {
     setMobileMenu(false);
     if (value === "booking") {
+      // Straight to "A table, or a room?" — the reservation itself. Signing in
+      // happens at the end, when the guest confirms, never on the way in.
       setModal(null);
-      router.push("/auth/login");
+      router.push("/reserve?view=reserve");
       return;
     }
     setModal(value);
@@ -1518,16 +1523,26 @@ export default function App({ storyPage = false, menuPage = false, initialMenuCa
     if (!storyPage && !menuPage && id !== "story" && navigateSection(id))
       event.preventDefault();
   };
-  if (authPage) return <div className="app-shell auth-page-shell"><AuthScreen key={authPage} stage={authPage} /></div>;
+  if (authPage)
+    return (
+      <div className="app-shell auth-page-shell">
+        <Suspense fallback={null}>
+          <AuthScreen key={authPage} stage={authPage} />
+        </Suspense>
+      </div>
+    );
   if (reservePage || orderPage)
     return (
       <div className={`app-shell reserve-page-shell${orderPage ? " order-page-shell" : ""}`}>
-        <BookingFlow key={orderPage ? "order" : "reserve"} start={orderPage ? "order" : "choose"} />
+        <BookingFlow key={orderPage ? "order" : "reserve"} start={orderPage ? "order" : startView === "reserve" ? "reserve" : "choose"} />
         <SiteFooter />
+        <SignInFab />
       </div>
     );
   return (
     <div className={`app-shell${storyPage ? " story-page-shell" : ""}${menuPage ? " menu-page-shell" : ""}`}>
+      <OrderPill />
+      <SignInFab stacked />
       <Link className="skip-link" href="#main">
         Skip to content
       </Link>
