@@ -24,8 +24,29 @@ type Errors = Record<string, string>;
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 const tomorrow = iso(new Date(Date.now() + 864e5));
 const today = iso(new Date());
+// Online order slots: 11:00 – 21:30 every 30 minutes (Sri Lanka time).
+const ORDER_SLOTS = Array.from({ length: 22 }, (_, i) => {
+  const minutes = 11 * 60 + i * 30;
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+});
+const prettyDay = (isoDate: string) => {
+  if (!isoDate) return "";
+  const d = new Date(`${isoDate}T12:00:00+05:30`);
+  return Number.isNaN(d.getTime()) ? isoDate : d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Colombo" });
+};
+const prettyTime = (hhmm: string) => {
+  if (!hhmm) return "";
+  const [h, m] = hhmm.split(":").map(Number);
+  const suffix = h >= 12 ? "pm" : "am";
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
+};
 const TIMES = ["12:00", "12:30", "13:00", "13:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00"];
 const SEATING = ["No preference", "Window", "Garden terrace", "Centre of the room", "Quiet corner"];
+// Reading the clock is impure, so it lives outside the component: render stays pure,
+// and only the click handlers ever ask for the time.
+const nowMs = () => Date.now();
+
 const phoneOk = (v: string) => {
   const digits = v.replace(/[\s()-]/g, "");
   return /^(?:\+94|0094|0)?7\d{8}$/.test(digits) || /^\+?\d{9,15}$/.test(digits);
@@ -49,6 +70,28 @@ function useLiveOrderMenu() {
     return () => { cancelled = true; controller.abort(); };
   }, []);
   return rows;
+}
+
+// Pickup locations (Tbl_LocationMaster). When the database cannot be read the
+// page keeps a neutral single entry instead of inventing branches.
+const FALLBACK_LOCATIONS = [{ code: "", name: "Mila Mirissa — the restaurant" }];
+
+function useLocations() {
+  const [locations, setLocations] = useState<{ code: string; name: string }[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+    fetch("/api/locations", { signal: controller.signal, cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { locations?: { code: string; name: string }[] } | null) => {
+        if (!cancelled && Array.isArray(data?.locations) && data.locations.length) setLocations(data.locations);
+      })
+      .catch(() => {
+        /* keep the fallback */
+      });
+    return () => { cancelled = true; controller.abort(); };
+  }, []);
+  return locations;
 }
 
 const Arrow = () => (
@@ -205,8 +248,25 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
   const roomRate = room ? (cur === "LKR" ? room.local : room.foreign) : 0;
   const roomTotal = (roomRate + pkgRate) * Math.max(nights, 0);
 
-  const [order, setOrder] = useState({ method: "delivery" as "delivery" | "pickup", name: "", phone: "", address: "", note: "" });
+  const [order, setOrder] = useState({
+    method: "delivery" as "delivery" | "pickup",
+    name: "",
+    phone: "",
+    address: "",
+    note: "",
+    // Separate date + time for each method, so switching keeps what was chosen.
+    deliveryDate: "",
+    deliveryTime: "",
+    pickupDate: "",
+    pickupTime: "",
+    pickupLoc: "",
+  });
+
+  const liveLocations = useLocations();
+  const locations = liveLocations ?? FALLBACK_LOCATIONS;
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [placing, setPlacing] = useState(false);
+  const [placeError, setPlaceError] = useState("");
 
   // Same tree as the menu page: top tab, then L1Des cards, then L2Des cards.
   const liveMenu = useLiveOrderMenu();
@@ -238,6 +298,40 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
   const count = items.reduce((a, d) => a + d.qty, 0);
   const subtotal = items.reduce((a, d) => a + d.price * d.qty, 0);
   const delivery = order.method === "delivery" ? 350 : 0;
+  const isDelivery = order.method === "delivery";
+  const schedDate = isDelivery ? order.deliveryDate : order.pickupDate;
+  const schedTime = isDelivery ? order.deliveryTime : order.pickupTime;
+  const schedWord = isDelivery ? "delivery" : "pickup";
+  const setSchedule = (date: string, time: string) => {
+    setOrder((old) => (old.method === "delivery"
+      ? { ...old, deliveryDate: date, deliveryTime: time }
+      : { ...old, pickupDate: date, pickupTime: time }));
+    setErrors((old) => (old.schedule ? { ...old, schedule: "" } : old));
+  };
+  // Sri Lanka time (UTC+5:30) — the restaurant, not the browser, is the reference.
+  // Called from the click handlers only, so rendering stays pure.
+  const scheduleProblem = () => {
+    if (!schedDate) return `Choose a ${schedWord} date.`;
+    if (!schedTime) return `Choose a ${schedWord} time.`;
+    const when = new Date(`${schedDate}T${schedTime}:00+05:30`).getTime();
+    if (Number.isNaN(when)) return `Choose a valid ${schedWord} date and time.`;
+    const floor = nowMs() + 30 * 60 * 1000;
+    if (when < floor) return `Please choose a ${schedWord} time at least 30 minutes from now.`;
+    return "";
+  };
+  const scheduleLabel = schedDate && schedTime ? `${prettyDay(schedDate)}, ${prettyTime(schedTime)}` : "";
+  // One location needs no choosing; only ask when the restaurant has several.
+  const pickupLocation =
+    locations.find((location) => location.code === order.pickupLoc) ??
+    (locations.length === 1 ? locations[0] : null);
+  const pickupLocationName = pickupLocation?.name ?? "";
+  // Everything the cart needs before checkout: a schedule and, for pickup, a place.
+  const cartProblem = () => {
+    const schedMsg = scheduleProblem();
+    if (schedMsg) return { field: "schedule" as const, message: schedMsg };
+    if (!isDelivery && locations.length > 1 && !pickupLocation) return { field: "location" as const, message: "Choose the restaurant you’ll collect from." };
+    return null;
+  };
 
   const dishRefs = useRef<Record<string, HTMLImageElement | null>>({});
   const cartRef = useRef<HTMLSpanElement | null>(null);
@@ -318,17 +412,62 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     setView("success");
   };
 
-  const confirmOrder = () => {
+  // The cart is written to dbo.Tbl_holdUpsCloudTempWeb. If the database cannot
+  // be reached the guest is told plainly — no fake success screen.
+  const confirmOrder = async () => {
     const next: Errors = {};
     if (!items.length) next.cart = "Your cart is empty.";
     if (order.name.trim().length < 2) next.name = "Please enter your name.";
     if (!phoneOk(order.phone)) next.phone = "Enter a valid phone number.";
     if (order.method === "delivery" && order.address.trim().length < 8) next.address = "Enter the delivery address.";
+    const schedMsg = scheduleProblem();
+    if (schedMsg) next.schedule = schedMsg;
+    const placeMsg = !isDelivery && locations.length > 1 && !pickupLocation ? "Choose the restaurant you’ll collect from." : "";
+    if (placeMsg) next.location = placeMsg;
     setErrors(next);
     if (Object.keys(next).length) return;
-    setKind("order");
-    setRef(`MC-ORD-${Math.floor(1000 + Math.random() * 9000)}`);
-    setView("success");
+
+    setPlacing(true);
+    setPlaceError("");
+    try {
+      const response = await fetch("/api/order/confirm", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          orderType: isDelivery ? "DL" : "PU",
+          scheduleDate: schedDate,
+          scheduleTime: schedTime,
+          // A delivery is not tied to a pickup counter; the server picks the restaurant.
+          locCode: isDelivery ? "" : pickupLocation?.code ?? "",
+          customerName: order.name.trim(),
+          customerPhone: order.phone.trim(),
+          customerAddress: order.address.trim(),
+          customerLocation: isDelivery ? "" : pickupLocationName,
+          orderNote: order.note.trim(),
+          items: items.map((line) => ({ itemCode: line.id, qty: line.qty })),
+        }),
+      });
+      const data = (await response.json().catch(() => null)) as
+        | { ok?: boolean; message?: string; tabelNo?: string; orderNo?: string; invoiceNo?: string; reason?: string }
+        | null;
+
+      if (!response.ok || !data?.ok) {
+        setPlaceError(
+          data?.message
+            ? `${data.message} Nothing was charged and nothing was saved.`
+            : "We couldn’t reach the kitchen, so this order was not saved. Please try again in a moment.",
+        );
+        return;
+      }
+
+      setRef([data.tabelNo, data.orderNo ? `order ${data.orderNo}` : ""].filter(Boolean).join(" · "));
+      setKind("order");
+      setView("success");
+    } catch {
+      setPlaceError("We couldn’t reach the kitchen, so this order was not saved. Please check your connection and try again.");
+    } finally {
+      setPlacing(false);
+    }
   };
 
   const addToCart = (id: string) => {
@@ -736,6 +875,12 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
           ))}
           <div className="fee-line"><span>Subtotal</span><span>{money(subtotal, "LKR")}</span></div>
           <div className="fee-line"><span>{order.method === "delivery" ? "Delivery" : "Pickup"}</span><span>{order.method === "delivery" ? money(delivery, "LKR") : "Free"}</span></div>
+          {scheduleLabel && (
+            <div className="fee-line"><span>{isDelivery ? "Delivery time" : "Pickup time"}</span><span>{scheduleLabel}</span></div>
+          )}
+          {!isDelivery && pickupLocationName && (
+            <div className="fee-line"><span>Pickup from</span><span>{pickupLocationName}</span></div>
+          )}
           <div className="sum-total"><span>Total</span><strong>{money(subtotal + delivery, "LKR")}</strong></div>
           <button className="btn block" style={{ marginTop: 16 }} type="button" onClick={() => go("cart")}>Review cart <Arrow /></button>
         </>
@@ -744,9 +889,13 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
       )}
       <div className="delivery-note">
         <InfoIcon />
-        <span>{order.method === "delivery"
-          ? "Delivery is estimated at 35–45 minutes once the kitchen accepts your order."
-          : "Pickup from the restaurant, usually ready in 25–30 minutes."}</span>
+        <span>{isDelivery
+          ? scheduleLabel
+            ? `Delivery requested for ${scheduleLabel}. We’ll call to confirm.`
+            : "Choose a delivery date and time in the cart. Delivery takes 35–45 minutes once the kitchen accepts your order."
+          : scheduleLabel
+            ? `Pickup requested for ${scheduleLabel}${pickupLocationName ? ` at ${pickupLocationName}` : ""}. Ready at the counter.`
+            : "Choose a pickup date and time in the cart. Pickup is usually ready in 25–30 minutes."}</span>
       </div>
     </aside>
   );
@@ -935,9 +1084,66 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
               <button className="btn" type="button" onClick={() => go("order")}>Browse the menu <Arrow /></button>
             </div>
           )}
+          <section className="panel sched reveal" aria-labelledby="sched-title">
+            <div className="sched-head">
+              <div>
+                <span className="eyebrow">WHEN</span>
+                <h3 id="sched-title">{isDelivery ? "Delivery date & time" : "Pickup date & time"}</h3>
+              </div>
+              <div className="seg" role="group" aria-label="Delivery or pickup" style={{ borderRadius: 8 }}>
+                <button type="button" style={{ borderRadius: 5 }} aria-pressed={isDelivery} onClick={() => { setOrder({ ...order, method: "delivery" }); setErrors({}); }}>Delivery</button>
+                <button type="button" style={{ borderRadius: 5 }} aria-pressed={!isDelivery} onClick={() => { setOrder({ ...order, method: "pickup" }); setErrors({}); }}>Pickup</button>
+              </div>
+            </div>
+            <div className="form-grid" style={{ marginTop: 16 }}>
+              <Field
+                id="ordDate"
+                label={isDelivery ? "Delivery date" : "Pickup date"}
+                type="date"
+                min={today}
+                value={schedDate}
+                onChange={(v) => setSchedule(v, schedTime)}
+              />
+              <div className="field">
+                <label htmlFor="ordTime">{isDelivery ? "Delivery time" : "Pickup time"}</label>
+                <select id="ordTime" className="slot-select" value={schedTime} onChange={(e) => setSchedule(schedDate, e.target.value)} aria-invalid={errors.schedule ? true : undefined}>
+                  <option value="">Choose a time</option>
+                  {ORDER_SLOTS.map((slot) => <option key={slot} value={slot}>{prettyTime(slot)}</option>)}
+                </select>
+              </div>
+            </div>
+            {!isDelivery && locations.length > 1 && (
+              <div className="field loc-field">
+                <label htmlFor="ordLoc">Pickup location</label>
+                <select
+                  id="ordLoc"
+                  className="slot-select"
+                  value={pickupLocation?.code ?? ""}
+                  onChange={(e) => { setOrder({ ...order, pickupLoc: e.target.value }); setErrors((old) => ({ ...old, location: "" })); }}
+                  aria-invalid={errors.location ? true : undefined}
+                >
+                  <option value="">Choose a restaurant</option>
+                  {locations.map((location) => (
+                    <option key={location.code} value={location.code}>{location.name}</option>
+                  ))}
+                </select>
+                {errors.location && <p className="err" role="alert">{errors.location}</p>}
+              </div>
+            )}
+            <p className="micro sched-note">
+              {isDelivery
+                ? "We deliver between 11:00 and 21:30. Choose a time at least 30 minutes from now."
+                : "Collect from the restaurant counter, 11:00 – 21:30. Choose a time at least 30 minutes from now."}
+            </p>
+            {errors.schedule && <p className="err" role="alert">{errors.schedule}</p>}
+          </section>
           <div className="actions">
             <button className="text-link" type="button" onClick={() => go("order")}><Left /> Add more dishes</button>
-            {items.length > 0 && <button className="btn" type="button" onClick={() => go("checkout")}>Continue to checkout <Arrow /></button>}
+            {items.length > 0 && (
+              <button className="btn" type="button" onClick={() => { const problem = cartProblem(); if (problem) { setErrors({ [problem.field]: problem.message }); return; } setErrors({}); go("checkout"); }}>
+                Continue to checkout <Arrow />
+              </button>
+            )}
           </div>
         </div>
         {orderSummary}
@@ -962,6 +1168,11 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
             <button type="button" style={{ borderRadius: 5 }} aria-pressed={order.method === "delivery"} onClick={() => setOrder({ ...order, method: "delivery" })}>Deliver to me</button>
             <button type="button" style={{ borderRadius: 5 }} aria-pressed={order.method === "pickup"} onClick={() => setOrder({ ...order, method: "pickup" })}>I’ll pick up</button>
           </div>
+          <div className="sched-readout">
+            <span><ClockIcon />{isDelivery ? "Delivery" : "Pickup"} · <b>{scheduleLabel || "date and time not chosen"}</b>{!isDelivery && pickupLocationName ? ` · ${pickupLocationName}` : ""}</span>
+            <button type="button" className="text-link" onClick={() => go("cart")}>Change</button>
+          </div>
+          {errors.location && <p className="err" role="alert">{errors.location}</p>}
           <div className="form-grid">
             <Field id="oname" label="Full name" value={order.name} onChange={(v) => setOrder({ ...order, name: v })} placeholder="Your name" error={errors.name} autoComplete="name" />
             <Field id="ophone" label="Phone number" value={order.phone} onChange={(v) => setOrder({ ...order, phone: v })} placeholder="07X XXX XXXX" inputMode="tel" error={errors.phone} autoComplete="tel" />
@@ -970,15 +1181,18 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
             ) : (
               <div className="field full">
                 <label htmlFor="oaddr">Pickup</label>
-                <input id="oaddr" value="Mila Mirissa, restaurant counter" readOnly />
+                <input id="oaddr" value={pickupLocationName || "Mila Mirissa, restaurant counter"} readOnly />
               </div>
             )}
             <TextArea id="onote" label="Notes for the kitchen" value={order.note} onChange={(v) => setOrder({ ...order, note: v })} placeholder="Spice level, allergies, gate code…" />
           </div>
           {errors.cart && <p className="err" role="alert">{errors.cart}</p>}
+          {placeError && <p className="err" role="alert">{placeError}</p>}
           <div className="actions">
-            <button className="text-link" type="button" onClick={() => go("cart")}><Left /> Back to cart</button>
-            <button className="btn" type="button" onClick={confirmOrder}>Place order · {money(subtotal + delivery, "LKR")} <Arrow /></button>
+            <button className="text-link" type="button" onClick={() => go("cart")} disabled={placing}><Left /> Back to cart</button>
+            <button className="btn" type="button" onClick={confirmOrder} disabled={placing} aria-busy={placing}>
+              {placing ? "Saving your order…" : <>Place order · {money(subtotal + delivery, "LKR")} <Arrow /></>}
+            </button>
           </div>
         </section>
         {summary(
@@ -987,7 +1201,9 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
               <div className="sum-line" key={d.id}><span>{d.qty} × {d.name}</span><b>{money(d.price * d.qty, "LKR")}</b></div>
             ))}
             <div className="sum-line"><span>Subtotal</span><b>{money(subtotal, "LKR")}</b></div>
-            <div className="sum-line"><span>{order.method === "delivery" ? "Delivery" : "Pickup"}</span><b>{order.method === "delivery" ? money(delivery, "LKR") : "Free"}</b></div>
+            <div className="sum-line"><span>{isDelivery ? "Delivery" : "Pickup"}</span><b>{isDelivery ? money(delivery, "LKR") : "Free"}</b></div>
+            <div className="sum-line"><span>{isDelivery ? "Delivery time" : "Pickup time"}</span><b>{scheduleLabel || "Not chosen"}</b></div>
+            {!isDelivery && <div className="sum-line"><span>Pickup from</span><b>{pickupLocationName || "Not chosen"}</b></div>}
             <div className="sum-total"><span>Total</span><strong>{money(subtotal + delivery, "LKR")}</strong></div>
           </>,
           <><span>Order summary</span><span>{count} {count === 1 ? "item" : "items"}</span></>,
@@ -1007,12 +1223,16 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
         </h1>
         <p>
           {kind === "order"
-            ? `Thank you, ${order.name.split(" ")[0] || "friend"}. The kitchen will call ${order.phone} to confirm.`
+            ? `Thank you, ${order.name.split(" ")[0] || "friend"}. ${isDelivery ? "Delivery" : "Pickup"} for ${scheduleLabel || "your chosen time"}${!isDelivery && pickupLocationName ? ` at ${pickupLocationName}` : ""}. The kitchen will call ${order.phone} to confirm.`
             : kind === "room"
               ? `${r.name.split(" ")[0] || "Guest"}, we’ve noted your stay from ${r.checkin} to ${r.checkout}.`
               : `Thank you, ${t.name.split(" ")[0] || "friend"}. We’ll see you at ${t.time} on ${t.date} for ${guests} ${guests === 1 ? "guest" : "guests"}.`}
         </p>
-        <p className="micro">Your details stay in this browser tab — nothing has been sent to the restaurant yet.</p>
+        <p className="micro">
+          {kind === "order"
+            ? "Your order is saved in the restaurant’s system. The kitchen will call to confirm."
+            : "Your details stay in this browser tab — nothing has been sent to the restaurant yet."}
+        </p>
         <span className="ref">{ref}</span>
         <div className="success-actions">
           <button className="btn light" type="button" onClick={() => go("choose")}>Back to start</button>

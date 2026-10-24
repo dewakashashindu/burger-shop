@@ -370,3 +370,21 @@
 .dish.is-coll::after{content:"";position:absolute;left:9px;right:9px;bottom:-5px;height:5px;border:1px solid #35433326;border-top:0;border-radius:0 0 5px 5px;background:#e8e0d0;pointer-events:none}
 .dish.is-coll:hover{border-color:#8d9c7b;box-shadow:0 12px 26px #35433314}
 @media(max-width:767px){.dish.is-coll h3{font-size:22px}.order-status{font-size:8px}}
+
+/* ── Cart: delivery / pickup date + time ─────────────────────────────────── */
+.sched{margin-top:20px}
+.sched-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.sched-head h3{margin:10px 0 0}
+.sched-head .seg{border-radius:8px}
+.sched-note{margin:12px 0 0;line-height:1.9;color:#7a826f}
+.slot-select{width:100%;min-height:49px;border:1px solid #35433335;background:#faf8f1;border-radius:5px;padding:13px 15px;font:inherit;font-size:12px;color:inherit;appearance:none;background-image:linear-gradient(45deg,transparent 50%,#5f6b51 50%),linear-gradient(135deg,#5f6b51 50%,transparent 50%);background-position:calc(100% - 19px) 50%,calc(100% - 14px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.slot-select:focus{border-color:#7c9064;outline:none}
+.slot-select[aria-invalid="true"]{border-color:#b77462}
+.sched-readout{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border:1px solid #3543331f;background:#eef1e4;border-radius:6px;padding:12px 14px;margin:0 0 20px;font-size:10.5px;color:#5f6b51}
+.sched-readout span{display:inline-flex;align-items:center;gap:8px}
+.sched-readout svg{width:15px;height:15px;flex-shrink:0}
+.sched-readout b{color:#354333;font-weight:600}
+.sched-readout .text-link{font-size:10px;white-space:nowrap}
+.cart-layout .panel.sched{padding:22px 24px}
+@media(max-width:767px){.cart-layout .panel.sched{padding:18px 16px}.sched-head{align-items:flex-start}.sched-head h3{font-size:23px}.slot-select{font-size:13px;min-height:50px}}
+.loc-field{margin-top:14px}

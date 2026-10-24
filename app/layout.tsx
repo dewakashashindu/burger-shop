@@ -13,6 +13,18 @@ export const metadata: Metadata = {
   title: "Mila Mirissa — Kitchen & Good Company",
   description:
     "A little kitchen, a warm welcome, and your kind of food. Explore the Mila Mirissa kitchen and find your next favourite table.",
+  applicationName: "Mila Mirissa",
+  // The logo also sits in the browser tab. The version suffix makes browsers
+  // replace an older cached icon straight away.
+  icons: {
+    icon: [
+      { url: "/images/mila-mirissa-logo-sm.png?v=2", type: "image/png", sizes: "128x128" },
+      { url: "/images/mila-mirissa-logo.png?v=2", type: "image/png", sizes: "512x512" },
+    ],
+    shortcut: "/images/mila-mirissa-logo-sm.png?v=2",
+    apple: [{ url: "/apple-icon.png?v=2", sizes: "180x180", type: "image/png" }],
+  },
+  appleWebApp: { capable: true, title: "Mila Mirissa", statusBarStyle: "default" },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
