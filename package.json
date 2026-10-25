@@ -9,7 +9,9 @@
     "lint": "eslint",
     "db:check": "node scripts/db-check.mjs",
     "db:setup": "node scripts/db-setup.mjs",
-    "db:order": "node scripts/db-order-setup.mjs"
+    "db:order": "node scripts/db-order-setup.mjs",
+    "otp:setup": "node scripts/otp-setup.mjs",
+    "bundle:order": "node scripts/make-order-bundle.mjs"
   },
   "dependencies": {
     "mssql": "^11.0.2",

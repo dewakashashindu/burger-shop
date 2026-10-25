@@ -1,47 +1,127 @@
-# Clean authentication UI — integrated
+# Sign-in — a phone, a text, and nothing else
 
-## Approved changes
+The restaurant's website has no passwords. A guest proves a number with a six-digit
+code sent by SMS (Text.lk); that code is the whole of the sign-in.
 
-- Phone number + password login.
-- Signup with name, phone, password and password confirmation.
-- Forgot password → OTP screen → new password screen.
-- Google button **after** phone/password fields and primary form action, on Login and Signup.
-- Google button uses cream/light olive, olive text and border; no blue button background. The official multicolour G is retained.
-- No Account help screen, sample/demo labels, fixed-code helper, screen-selector toolbar or reset-preview control in the website UI.
-- Find your table / Book a table / Plan a visit actions now open `/auth/login` from Home, Menu, Story, mobile navigation and footer.
-- Existing Home/Story animation calculations, timing/styles and shared footer remain unchanged.
+## The two screens
 
-## Routes
+| Route | What it does |
+| --- | --- |
+| `/auth/login` | phone number → six-digit code → signed in |
+| `/auth/signup` | name, phone, address (one to four lines), optional email → **a texted code** → account written, guest signed in |
 
-- `/auth/login`
-- `/auth/signup`
-- `/auth/forgot-password`
-- `/auth/otp` — reset-code UI
-- `/auth/verify-phone` — signup-code UI
-- `/auth/reset-password`
+There is no forgot-password, no reset and no Google button. The old six-stage
+auth UI, its password stage and its OTP-reset screens are deleted.
 
-These are static UI routes, not protected account routes. Auth pages are marked noindex. No real booking or account is created.
+Sign-up is two beats on one screen: the details, then six boxes. The code is
+asked for with `purpose: "signup"` **before** anything is written, and the
+account row is created in the same call that verifies it — so no account exists
+until the number is proved, and a wrong, expired or spent code leaves the book
+untouched. That one code signs the guest in as well; there is no second text.
 
-## Important implementation scope
+## The popup at confirm
 
-**Authentication services are not connected.** There is no credential check, password storage/hash, account database, SMS provider, OTP verifier, reset-token issuer, Google OAuth integration or session creation.
+`app/SignInDialog.tsx` is drawn over the page (a portal on `<body>`, so the
+booking page's own button and input rules cannot reach into it) whenever a
+guest who is not signed in confirms a table, a room or an order.
 
-Login and Google actions display an accurate not-connected status. Signup and forgot-password actions navigate to the OTP UI with a message that **no code has been sent**. Six-digit format input can navigate from the reset OTP screen to the password screen, while explicitly stating that the code **has not been verified**. This is only a UI transition, not proof of identity or authorization. The password form never changes a password; it reports the service is not connected. Signup verification does not create an account.
+1. **Phone** — prefilled from the form, but the field is separate: the sign-in
+   number may be the same as the booking's number or a different one.
+2. **The book is read first.** `POST /api/auth/send-code` looks the number up in
+   `Tbl_CustomerMaster` **before** it makes or sends anything. A number with no
+   account is answered `404 { reason: "no-account" }` — no code is generated, no
+   row is written, no SMS is sent — and the popup opens the "new to us" step.
+3. **Code** — six boxes, valid 5 minutes, resend after 60 seconds (a resend is
+   held to one a minute, and a failed send retires the code so the cooldown does
+   not block a guest who never received anything).
+4. **New number** — "This number is new to us … no code has been sent" → **Create an account** goes to
+   `/auth/signup?next=…`, the booking is parked in the draft, and after signing
+   in the browser returns to `/reserve?resume=1`, where the confirmation that was
+   waiting runs by itself.
+5. **Known number** — the account's own name, email and address appear; the
+   guest may edit them. Edits are written back to `Tbl_CustomerMaster`
+   (name, email, `CusAdd1..4`). **The phone number cannot be changed** — it is
+   how the account is found.
 
-There is **no fixed OTP** or fake success session. Never use these client-side routes, flags, formatting checks or timers as security controls. Production requires server-side verification, expiring/single-use reset authorization bound to the account, rate limiting, safe error handling/account-enumeration protection, secure hashing, sessions, configured Google OAuth and final legal/privacy policies.
+## The phone-first form
 
-Do not enter real credentials until the backend is implemented. The UI sends no form POST or credential request. Phone/name are held only in a tab-memory store for navigation, not cookies/local storage. Password values are uncontrolled DOM values, not copied into the draft; they are cleared on navigation and after unavailable-service submissions.
+`/order` checkout, `/reserve` table and the room form all ask for the **phone
+number before the name**. As the number is typed, `GET /api/auth/lookup` is asked
+once (a 420 ms pause after the last keystroke):
 
-The old local booking-draft component remains in source for future integration but is no longer reachable from public booking actions. No authenticated booking handoff is simulated.
+- the number is the one in this session's cookie → the name fills itself, and on a
+  delivery order the saved addresses (`CusAdd1..4`) appear as one-tap picks, the
+  first already in the field;
+- the number has an account but isn't proved here → nothing is filled; the form
+  offers **Bring my details**, which opens the sign-in popup and then fills them;
+- anything the guest typed themselves is never overwritten.
 
-## Files
+A number's own name and address are never handed to a browser that hasn't proved
+that number — "has an account" is public, the details are not.
 
-`app/auth/AuthScreen.tsx`, `app/auth/auth-draft.ts`, six route files, `app/auth.css`. Shared booking CTA routing is centralized in `app/App.tsx`; `app/layout.tsx` imports the scoped stylesheet.
+## Data
 
-`MicroEChef-Auth-Preview.html` starts on Login and embeds the whole website with offline internal navigation, matching the other three updated HTML snapshots. It has no visible preview controls/labels.
+- **`dbo.Tbl_CustomerMaster`** — the guests' book. A person is found by the last
+  nine digits of `RegTel`. Rows are inserted with `LoCCode` from `WEB_LOC_CODE`
+  (`01`), `CreatedBy 'WEB'`, `Enable 1`.
+  **Every statement is built from the columns the table actually has**
+  (`lib/customer-sql.ts` reads `INFORMATION_SCHEMA.COLUMNS` once and caches the
+  shape; `lib/customer.ts` re-reads it if SQL Server ever answers
+  "Invalid column name"). The live table has no `CusWeb`, so that column is
+  simply not written there; on a wider install it is.
+- **Customer code** — allocated from the POS counter **`dbo.Tbl_TxnNumbers`**
+  (row `LoCCode 01 · TxnType CC · Prefix A`): the stored `TxnNo` + 1 is taken,
+  written back in the same transaction as the INSERT, and worn as
+  `Prefix + six digits` — `A000004`, `A000005`, … The read uses
+  `UPDLOCK, HOLDLOCK`, so two sign-ups at the same instant never share a code.
+  A missing or disabled row is reported plainly; no placeholder code is ever
+  invented.
+- **`dbo.Tbl_WebOtp`** — the codes, and **only live ones**. A row is written when
+  a text goes out and **deleted the moment the process ends**: verified, expired,
+  replaced by a newer code, or after the fifth wrong try. Nothing is kept "for
+  the record" — the table holds sha256(salt + ':' + code), never the code itself,
+  and `Purpose` keeps the `signup` and `signin` codes apart.
+  Create the table with `npm run otp:setup` (which also reports the
+  `Tbl_TxnNumbers` row, the book's column count and how many web accounts exist).
 
-## Verification
+## API
 
-Lint and production build pass. Six auth routes tested at nine widths (320–1920px), Google order and olive colour, removed labels, validation/toggles/matching passwords, Home/Menu/Story/mobile entry points, legal dialog, unavailable-service statuses, scroll unlock, no-JavaScript/reduced-motion and zero form POSTs. Scripts-only opaque iframe with all network blocked passes seven widths, form actions and all-page navigation.
+| Route | Purpose |
+| --- | --- |
+| `POST /api/auth/send-code` | `{ phone, purpose }` → texts a code. `signin` refuses a number with no account (`404 no-account`); `signup` refuses a number that already has one (`409 has-account`). Nothing is sent in either case. |
+| `POST /api/auth/verify-code` | `{ phone, code }` → sets the session cookie, returns the account |
+| `POST /api/auth/signup` | `{ name, phone, adds[], email, code }` → verifies the code, writes one row in the book, signs the guest in |
+| `GET /api/auth/me` | who this browser is signed in as (read from the book) |
+| `GET /api/auth/lookup?phone=` | what a booking form may fill in: name + saved addresses **only for the number this session proved**; any other number answers just `hasAccount` |
+| `PATCH /api/auth/profile` | name / email / address of the signed-in guest |
+| `POST /api/auth/logout` | forgets the cookie |
 
-All four existing CSS files, Story controller, LAN config and full Home scroll-controller block are SHA256 unchanged. Eight-viewport Home/Story regressions and nine-width menu tests pass. Temporary screenshots are removed after visual review.
+The session is one httpOnly cookie (`mila_session`) holding the number, a name
+and an expiry, signed with `AUTH_SECRET` (HMAC-SHA256). The browser cannot read
+or change it, and every page reads the guest back from the book, so a stale
+name in the cookie never wins.
+
+## Environment
+
+```
+TEXTLK_API_TOKEN=        # never reaches the browser
+TEXTLK_SENDER_ID=
+AUTH_SECRET=             # any long random string; without it a value derived from the DB settings is used
+OTP_TABLE=dbo.Tbl_WebOtp
+WEB_LOC_CODE=01
+# CUSTOMER_SEQ_TABLE=dbo.Tbl_TxnNumbers
+# CUSTOMER_SEQ_TYPE=CC
+# CUSTOMER_SEQ_PADDING=6
+WEB_AUTH_DEV=            # 1 = in-memory book + code printed to the server log (never in production)
+```
+
+With `WEB_AUTH_DEV=1` and no database, accounts and codes live in memory, the
+SMS is not sent, and `/api/auth/send-code` returns `devCode` so the local
+walkthrough and the test suites can read the code.
+
+## Limits
+
+Text.lk credentials and a database are required for real sign-in. The codes are
+5-minute, single-use and capped at 5 wrong tries; resends are held to one a
+minute. Nothing here protects against a compromised phone — that is the nature
+of SMS.

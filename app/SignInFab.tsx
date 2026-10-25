@@ -2,21 +2,30 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useGuest } from "./session";
+import { useEffect } from "react";
+import { refreshGuest, useGuest } from "./session";
 
 /**
  * A quiet sign-in chip that stays in the bottom-right corner.
  *
- * It follows the guest around every page except the six auth screens (where
+ * It follows the guest around every page except the two auth screens (where
  * they are already signing in). On pages that also carry the "Order now" pill
  * it sits above it (`stacked`), so the corner reads
- * [ Sign in ] over [ Order now ].
+ * [ Sign in ] over [ Order now ]. No password anywhere — a code by text is the
+ * whole of the sign-in.
  *
  * Once the tab has signed in it stops asking and simply shows who is here.
  */
 export default function SignInFab({ stacked = false }: { stacked?: boolean }) {
   const guest = useGuest();
   const pathname = usePathname();
+
+  // The cookie is the truth; the chip asks once on mount in case this tab
+  // never saw the sign-in itself (a new tab, or a session that has lapsed).
+  useEffect(() => {
+    void refreshGuest();
+  }, []);
+
   const next = encodeURIComponent(pathname || "/");
 
   if (guest) {

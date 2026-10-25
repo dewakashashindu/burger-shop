@@ -7,6 +7,7 @@ import "./footer.css";
 import "./story.css";
 import "./menu.css";
 import "./auth.css";
+import "./signin-dialog.css";
 import "./reserve.css";
 import "./motion-site.css";
 import "./contact.css";

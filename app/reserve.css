@@ -453,3 +453,21 @@
 .reserve-page-shell .period-chips .chip.is-on{background:#7a5634;border-color:#7a5634;color:#fdf7ee}
 .reserve-page-shell .save-error{margin-top:14px}
 @media(max-width:767px){.reserve-page-shell .period-row{flex-wrap:wrap}.reserve-page-shell .period-row select{flex:1 1 45%}}
+
+/* the book, by number: saved-address picks and the one-tap "bring my details" */
+.reserve-page-shell .addr-picks{display:flex;flex-direction:column;gap:9px;margin-top:-4px}
+.reserve-page-shell .addr-picks-key{display:flex;align-items:center;gap:6px;font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:#8e7c67}
+.reserve-page-shell .addr-picks-key svg{width:12px;height:12px}
+.reserve-page-shell .addr-picks-row{display:flex;flex-wrap:wrap;gap:8px}
+.reserve-page-shell .addr-chip{display:inline-flex;align-items:center;gap:8px;max-width:100%;text-align:left;border:1px solid #35433335;background:#faf8f1;border-radius:40px;padding:9px 15px 9px 9px;font-size:11px;line-height:1.5;color:#4a3d2e;white-space:normal;transition:border-color .2s,background .2s,transform .2s}
+.reserve-page-shell .addr-chip b{display:grid;place-items:center;flex:none;width:19px;height:19px;border-radius:50%;background:#ece2d2;font-size:8.5px;font-weight:500;color:#6b5a44}
+.reserve-page-shell .addr-chip:hover{border-color:#937048;transform:translateY(-1px)}
+.reserve-page-shell .addr-chip[aria-pressed=true]{border-color:#3f3325;background:#f1e8d9}
+.reserve-page-shell .addr-chip[aria-pressed=true] b{background:#3f3325;color:#f7f2e8}
+.reserve-page-shell .book-note{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:14px 0 0;padding:12px 14px;border:1px dashed #a8937514;border-radius:8px;background:#f3ede1;font-size:10.5px;line-height:1.7;color:#6b5c49}
+.reserve-page-shell .book-note.full{grid-column:1/-1;margin-top:0}
+.reserve-page-shell .book-note svg{width:14px;height:14px;flex:none;color:#8a6440}
+.reserve-page-shell .book-note .text-link{margin-left:auto;white-space:nowrap}
+@media (max-width:640px){
+  .reserve-page-shell .book-note .text-link{margin-left:0}
+}

@@ -15,7 +15,8 @@ The approved **01 / Warm Menu** is integrated into the original **burger-shop** 
 - Home food callouts lead to the menu and relevant category. Home's signature/dessert photos are now chicken kottu and watalappan so the food direction stays consistent.
 - The existing Home Story section, separate `/our-story` page, shared Warm Dining footer and exact small black **powered by microechef** credit are retained.
 - All previously requested UI removals remain removed. Existing animations have **not** been removed or retimed.
-- **Clean auth UI:** phone + password login, signup, forgot password → OTP → new password, and a cream/olive Google button placed after the form fields on Login/Signup. No Account help, sample/demo labels or preview toolbar. **Logging in with any phone number and password goes straight to `/reserve`** (sign-in itself is not connected yet).
+- **Sign-in by text:** phone number → six-digit code (Text.lk) → signed in. No password, no Google, no forgot-password. A guest signs in **in a popup over the booking**, and a number that isn't in the book is sent to `/auth/signup` and brought straight back to the confirmation.
+- **Sign-up proves the number:** details → a texted code → the account is written and the guest is already signed in. No account row exists until the code checks out, and the code is deleted the moment it is used.
 - **The approved Warm Dining footer now appears on the reservation and order pages** too, with the exact small black *powered by microechef* credit. It stays off the auth screens.
 - **Reservations & ordering (`/reserve`, `/order`):** after login (or the "Skip to reservations" link), a guest chooses **Reservation** (table or room) or **Order online**. Table booking is **one short form** (name, phone, date, time, **local guests and foreign guests counted separately**, seating preference, requests). Room booking has categories, stay packages, photo galleries, date range and NIC/passport. Ordering has the kitchen menu, animated add-to-cart, cart, delivery/pickup checkout.
 
@@ -33,7 +34,8 @@ Routes:
 - `http://localhost:3000/` — Home
 - `http://localhost:3000/menu` — Sri Lankan Warm Menu
 - `http://localhost:3000/our-story` — separate animated Our Story page
-- `http://localhost:3000/auth/login` — auth UI (also signup, forgot-password, otp, verify-phone, reset-password)
+- `http://localhost:3000/auth/login` — sign in with a phone number and a texted code
+- `http://localhost:3000/auth/signup` — create an account (name, phone, address, optional email)
 - `http://localhost:3000/reserve` — table/room reservations · `http://localhost:3000/order` — online order
 
 For a production build:
@@ -77,7 +79,7 @@ Category links such as `/menu?category=Hoppers` select the matching category aft
 
 ### Authentication
 
-`AUTH.md` documents the auth UI in full. **No authentication service is connected:** there is no credential check, password storage, account database, SMS/OTP verifier, reset token, Google OAuth or session. Actions state this accurately; no fixed OTP or fake login is used. The reset OTP screen can move to the new-password UI for design review only and clearly states the code has not been verified. Never treat this client-side UI as authorization. Production needs server-side verification/expiry/rate limits, single-use reset authorization, secure hashing and sessions, configured Google OAuth and final legal/privacy policies. Do not enter real credentials before the backend exists.
+`AUTH.md` documents the sign-in in full. Accounts live in `dbo.Tbl_CustomerMaster`, codes in `dbo.Tbl_WebOtp` (hashed, 5 minutes, one use), and the customer number comes from the POS counter `dbo.Tbl_TxnNumbers` (`A000004` and on). SMS goes through Text.lk. `npm run otp:setup` creates the codes table. Without `TEXTLK_API_TOKEN` no text is sent — the code is written to the server log, and `WEB_AUTH_DEV=1` opens the in-memory book so the flow can be walked locally. Set `AUTH_SECRET` before launch.
 
 ### Restaurant details and reservations
 
@@ -103,8 +105,8 @@ app/
     page.tsx              /menu route and metadata
     MenuContent.tsx       Warm Menu, filters, search and dish-detail content
   auth/
-    AuthScreen.tsx        clean phone/password, signup, OTP and reset UI
-    auth-draft.ts         tab-memory phone/name draft (no passwords)
+    AuthScreen.tsx        phone → code sign-in, and the create-account screen
+    signin-dialog.css     the popup that stands over a booking at confirm
     */page.tsx            six /auth routes and noindex metadata
   our-story/page.tsx      separate /our-story route
   layout.tsx              shared CSS and original font-provider links

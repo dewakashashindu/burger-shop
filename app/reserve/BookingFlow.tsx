@@ -6,8 +6,11 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CATS, DISHES, PACKAGES, PHOTO, ROOMS, money, type Dish, type Room } from "./booking-data";
 import type { MenuDish } from "../menu-data";
 import { usePathname, useRouter } from "next/navigation";
-import { forgetGuest, getGuest, useGuest } from "../session";
-import { updateAuthDraft } from "../auth/auth-draft";
+import { forgetGuest, getGuest, refreshGuest, useGuest } from "../session";
+import SignInDialog, { type SignedInCustomer } from "../SignInDialog";
+
+const localNine = (phone: string) =>
+  phone.startsWith("0") ? phone : `0${String(phone ?? "").replace(/^\+?94/, "")}`;
 
 type View =
   | "choose"
@@ -327,6 +330,14 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
   const pathname = usePathname();
   const [resuming, setResuming] = useState<PendingConfirm | null>(null);
   const resumeFired = useRef(false);
+  // The sign-in popup: open over the page, with the booking still behind it.
+  const [signInOpen, setSignInOpen] = useState(false);
+  const [signInPhone, setSignInPhone] = useState("");
+  const [signInIntent, setSignInIntent] = useState("");
+  const pendingKind = useRef<PendingConfirm | null>(null);
+  const [signedInTick, setSignedInTick] = useState(0);
+  // Bumped after a sign-in so the lookup runs again, now with a proven number.
+  const [setupTick, setSetupTick] = useState(0);
 
   const [t, setT] = useState({
     name: "",
@@ -512,13 +523,118 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
       : view === "table" ? "confirm this table"
         : "confirm this stay";
 
-  /** Parks the booking and walks the guest to the sign-in screen. */
-  const goToSignIn = (pending: PendingConfirm | null, phone: string, name = "") => {
-    writeDraft({ view, kind, t, r, order, cart, pending });
-    const local = nationalPhone(phone);
-    if (local || name) updateAuthDraft({ ...(local ? { phone: local } : {}), ...(name ? { name } : {}) });
-    const back = `${pathname}${pending ? "?resume=1" : ""}`;
-    router.push(`/auth/login?next=${encodeURIComponent(back)}`);
+  /**
+   * Asks who is asking — in a popup over the page, not on another screen.
+   * The booking stays exactly where it is; once the code checks out the
+   * confirmation that was waiting runs by itself.
+   */
+  const askToSignIn = (pending: PendingConfirm | null, phone: string, label: string) => {
+    pendingKind.current = pending;
+    setSignInPhone(nationalPhone(phone));
+    setSignInIntent(label);
+    setSignInOpen(true);
+  };
+
+  /**
+   * If the number is new, the sign-up screen opens with the booking parked —
+   * the draft holds it and `next` carries `?resume=1`, so signing in comes
+   * straight back to the confirmation that was waiting.
+   */
+  const leaveForSignup = () => {
+    writeDraft({ view, kind, t, r, order, cart, pending: pendingKind.current });
+    const back = `${pathname}${pendingKind.current ? "?resume=1" : ""}`;
+    return `/auth/signup?next=${encodeURIComponent(back)}`;
+  };
+
+  // ---------------------------------------------------- the book, by phone number
+  // Typing a number is the first thing a returning guest does. If this browser
+  // has already proved that number, the name and the saved addresses come back
+  // from Tbl_CustomerMaster by themselves; if the number has an account but has
+  // not been proved here, the form offers one code instead of guessing.
+  type BookLookup = { verified: boolean; hasAccount: boolean; name?: string; adds?: string[] };
+  const [bookT, setBookT] = useState<BookLookup | null>(null);
+  const [bookO, setBookO] = useState<BookLookup | null>(null);
+  const [bookR, setBookR] = useState<BookLookup | null>(null);
+
+  const useLookup = (
+    phone: string,
+    set: (value: BookLookup | null) => void,
+  ) => {
+    useEffect(() => {
+      const nine = nationalPhone(phone).replace(/\D/g, "").slice(-9);
+      if (nine.length !== 9) {
+        set(null);
+        return;
+      }
+      let alive = true;
+      const id = window.setTimeout(async () => {
+        try {
+          const response = await fetch(`/api/auth/lookup?phone=${nine}`, { cache: "no-store" });
+          const data = (await response.json().catch(() => null)) as
+            | { ok?: boolean; verified?: boolean; hasAccount?: boolean; customer?: { name?: string; adds?: string[] } }
+            | null;
+          if (!alive || !data?.ok) return;
+          set({
+            verified: Boolean(data.verified),
+            hasAccount: Boolean(data.hasAccount),
+            name: data.customer?.name,
+            adds: data.customer?.adds,
+          });
+        } catch {
+          /* offline — the guest simply types their own details */
+        }
+      }, 420);
+      return () => {
+        alive = false;
+        window.clearTimeout(id);
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [phone, setupTick]);
+  };
+  useLookup(t.phone, setBookT);
+  useLookup(order.phone, setBookO);
+  useLookup(r.phone, setBookR);
+
+  // What the book knows, once it is allowed to say it.
+  const savedAdds = (lookup: BookLookup | null) =>
+    lookup?.verified ? (lookup.adds ?? []).map((line) => line.trim()).filter(Boolean) : [];
+
+  // Name and address arrive by themselves for a number this browser owns —
+  // anything the guest has typed themselves is never overwritten.
+  useEffect(() => {
+    if (!bookT?.verified) return;
+    setT((old) => ({ ...old, name: old.name || bookT.name || "" }));
+  }, [bookT]);
+
+  useEffect(() => {
+    if (!bookR?.verified) return;
+    setR((old) => ({ ...old, name: old.name || bookR.name || "" }));
+  }, [bookR]);
+
+  useEffect(() => {
+    if (!bookO?.verified) return;
+    const first = (bookO.adds ?? []).map((line) => line.trim()).filter(Boolean)[0] ?? "";
+    setOrder((old) => ({ ...old, name: old.name || bookO.name || "", address: old.address || first }));
+  }, [bookO]);
+
+  /** The one-button way from "this number has an account" to the saved details. */
+  const bringDetails = (phone: string, kind: "table" | "order" | "room") => {
+    askToSignIn(null, phone, kind === "order" ? "order" : "booking");
+    setSetupTick((tick) => tick + 1);
+  };
+
+  /** A saved address, chosen with one tap — joined into the address field. */
+  const addressLine = (lines: string[]) => lines.join(", ");
+
+  const onSignedIn = (customer: SignedInCustomer) => {
+    // The person in the book is the person in the form — fill what is empty.
+    const local = localNine(customer.phone);
+    setT((old) => ({ ...old, name: old.name || customer.name, phone: old.phone || local }));
+    setOrder((old) => ({ ...old, name: old.name || customer.name, phone: old.phone || local }));
+    setR((old) => ({ ...old, name: old.name || customer.name, phone: old.phone || local }));
+    setSignInOpen(false);
+    setSignedInTick((tick) => tick + 1);
+    setSetupTick((tick) => tick + 1);
   };
 
   const signInHint = guest ? null : (
@@ -527,7 +643,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
         <rect x="4.5" y="10.5" width="15" height="9.5" rx="2.2" stroke="currentColor" strokeWidth="1.4" />
         <path d="M8.2 10.5V8a3.8 3.8 0 1 1 7.6 0v2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       </svg>
-      You’ll sign in to {confirmLabel} — your details come with you.
+      You’ll sign in to {confirmLabel} — a code by text, right here in the page.
     </p>
   );
   const signedInLine = guest ? (
@@ -592,6 +708,23 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     if (toastTimer.current) clearTimeout(toastTimer.current);
   }, []);
 
+  // After the popup closes with a signed-in guest, the confirmation that was
+  // waiting runs. The effect fires on the tick so these functions see the new
+  // guest from the store, not the empty one they were built with.
+  useEffect(() => {
+    if (!signedInTick) return;
+    const waiting = pendingKind.current;
+    if (!waiting) return;
+    pendingKind.current = null;
+    const id = window.setTimeout(() => {
+      if (waiting === "table") void confirmTable();
+      else if (waiting === "order") void confirmOrder();
+      else confirmRoom();
+    }, 60);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [signedInTick]);
+
   const notify = (message: string) => {
     setToast(message);
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -645,7 +778,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     setErrors(next);
     if (Object.keys(next).length) return;
     if (!getGuest()) {
-      goToSignIn("table", t.phone, t.name);
+      askToSignIn("table", t.phone, "booking");
       return;
     }
 
@@ -705,7 +838,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     setErrors(next);
     if (Object.keys(next).length) return;
     if (!getGuest()) {
-      goToSignIn("room", r.phone, r.name);
+      askToSignIn("room", r.phone, "booking");
       return;
     }
     setKind("room");
@@ -728,7 +861,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     setErrors(next);
     if (Object.keys(next).length) return;
     if (!getGuest()) {
-      goToSignIn("order", order.phone, order.name);
+      askToSignIn("order", order.phone, "order");
       return;
     }
 
@@ -776,6 +909,22 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
       setPlacing(false);
     }
   };
+
+  // The sign-up route takes over when the number is new: the guest creates the
+  // account there, signs in, and the browser comes back with `?resume=1`.
+  useEffect(() => {
+    if (!guest) return;
+    let alive = true;
+    void (async () => {
+      const fresh = await refreshGuest();
+      if (!alive || !fresh) return;
+      setT((old) => ({ ...old, name: old.name || fresh.name, phone: old.phone || localNine(fresh.phone) }));
+      setOrder((old) => ({ ...old, name: old.name || fresh.name, phone: old.phone || localNine(fresh.phone) }));
+      setR((old) => ({ ...old, name: old.name || fresh.name, phone: old.phone || localNine(fresh.phone) }));
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Runs once the restored draft has landed in state, so the confirmation sees
   // the guest's own values. `?resume=1` is then dropped from the URL.
@@ -944,8 +1093,15 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
           <h3>Your reservation</h3>
           <p className="hint" style={{ marginBottom: 20 }}>Fields marked * are needed.</p>
           <div className="form-grid">
-            <Field id="tname" label="Full name *" value={t.name} onChange={(v) => setT({ ...t, name: v })} placeholder="Your name" error={errors.name} autoComplete="name" />
-            <Field id="tphone" label="Phone number *" value={t.phone} onChange={(v) => setT({ ...t, phone: v })} placeholder="07X XXX XXXX" inputMode="tel" error={errors.phone} autoComplete="tel" />
+            <Field id="tphone" label="Phone number *" value={t.phone} onChange={(v) => setT({ ...t, phone: v })} placeholder="07X XXX XXXX" inputMode="tel" error={errors.phone} autoComplete="tel" full />
+            <Field id="tname" label="Full name *" value={t.name} onChange={(v) => setT({ ...t, name: v })} placeholder={bookT?.verified && bookT.name ? bookT.name : "Fills in from your number"} error={errors.name} autoComplete="name" full />
+            {bookT && !bookT.verified && bookT.hasAccount && (
+              <p className="book-note full">
+                <InfoIcon />
+                <span>This number has an account — sign in once and your name comes with it.</span>
+                <button type="button" className="text-link" onClick={() => bringDetails(t.phone, "table")}>Bring my details</button>
+              </p>
+            )}
             <Field id="tdate" label="Date *" type="date" min={tomorrow} value={t.date} onChange={(v) => setT({ ...t, date: v })} error={errors.date} />
             <div className="field">
               <label htmlFor="tfrom">Time period *</label>
@@ -1264,8 +1420,15 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
           </div>
           <h3 style={{ marginTop: 26 }}>Guest details</h3>
           <div className="form-grid" style={{ marginTop: 16 }}>
-            <Field id="rname" label="Full name" value={r.name} onChange={(v) => setR({ ...r, name: v })} placeholder="Your name" error={errors.name} autoComplete="name" />
-            <Field id="rphone" label="Phone number" value={r.phone} onChange={(v) => setR({ ...r, phone: v })} placeholder="07X XXX XXXX" inputMode="tel" error={errors.phone} autoComplete="tel" />
+            <Field id="rphone" label="Phone number" value={r.phone} onChange={(v) => setR({ ...r, phone: v })} placeholder="07X XXX XXXX" inputMode="tel" error={errors.phone} autoComplete="tel" full />
+            <Field id="rname" label="Full name" value={r.name} onChange={(v) => setR({ ...r, name: v })} placeholder={bookR?.verified && bookR.name ? bookR.name : "Fills in from your number"} error={errors.name} autoComplete="name" full />
+            {bookR && !bookR.verified && bookR.hasAccount && (
+              <p className="book-note full">
+                <InfoIcon />
+                <span>This number has an account — sign in once and your name comes with it.</span>
+                <button type="button" className="text-link" onClick={() => bringDetails(r.phone, "room")}>Bring my details</button>
+              </p>
+            )}
             <Field id="rid" label="NIC or passport number" value={r.idno} onChange={(v) => setR({ ...r, idno: v })} placeholder="For the guest register" error={errors.idno} maxLength={30} />
             <div className="field">
               <span className="lab">Guest rate</span>
@@ -1653,10 +1816,30 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
           </div>
           {errors.location && <p className="err" role="alert">{errors.location}</p>}
           <div className="form-grid">
-            <Field id="oname" label="Full name" value={order.name} onChange={(v) => setOrder({ ...order, name: v })} placeholder="Your name" error={errors.name} autoComplete="name" />
-            <Field id="ophone" label="Phone number" value={order.phone} onChange={(v) => setOrder({ ...order, phone: v })} placeholder="07X XXX XXXX" inputMode="tel" error={errors.phone} autoComplete="tel" />
+            <Field id="ophone" label="Phone number" value={order.phone} onChange={(v) => setOrder({ ...order, phone: v })} placeholder="07X XXX XXXX" inputMode="tel" error={errors.phone} autoComplete="tel" full />
+            <Field id="oname" label="Full name" value={order.name} onChange={(v) => setOrder({ ...order, name: v })} placeholder={bookO?.verified && bookO.name ? bookO.name : "Fills in from your number"} error={errors.name} autoComplete="name" full />
             {order.method === "delivery" ? (
-              <Field id="oaddr" label="Delivery address" value={order.address} onChange={(v) => setOrder({ ...order, address: v })} placeholder="House, street, area" error={errors.address} full />
+              <>
+                <Field id="oaddr" label="Delivery address" value={order.address} onChange={(v) => setOrder({ ...order, address: v })} placeholder="House, street, area" error={errors.address} full />
+                {savedAdds(bookO).length > 0 && (
+                  <div className="addr-picks full">
+                    <span className="addr-picks-key"><PinIcon /> Saved addresses</span>
+                    <div className="addr-picks-row">
+                      {savedAdds(bookO).map((line, index) => (
+                        <button
+                          key={line}
+                          type="button"
+                          className="addr-chip"
+                          aria-pressed={order.address === line}
+                          onClick={() => setOrder({ ...order, address: line })}
+                        >
+                          <b>{index + 1}</b>{line}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="field full">
                 <label htmlFor="oaddr">Pickup</label>
@@ -1665,6 +1848,13 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
             )}
             <TextArea id="onote" label="Notes for the kitchen" value={order.note} onChange={(v) => setOrder({ ...order, note: v })} placeholder="Spice level, allergies, gate code…" />
           </div>
+          {bookO && !bookO.verified && bookO.hasAccount && (
+            <p className="book-note">
+              <InfoIcon />
+              <span>This number has an account — sign in once and your name and saved addresses come with it.</span>
+              <button type="button" className="text-link" onClick={() => bringDetails(order.phone, "order")}>Bring my details</button>
+            </p>
+          )}
           {errors.cart && <p className="err" role="alert">{errors.cart}</p>}
           {placeError && <p className="err" role="alert">{placeError}</p>}
           {signInHint}
@@ -1771,6 +1961,15 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
         </div>
       </header>
       <div id="reserve-main">{body}</div>
+      <SignInDialog
+        open={signInOpen}
+        initialPhone={signInPhone}
+        intent={signInIntent}
+        onClose={() => setSignInOpen(false)}
+        onSignedIn={onSignedIn}
+        signupHref={`/auth/signup?next=${encodeURIComponent(pathname || "/reserve")}`}
+        onLeavingForSignup={leaveForSignup}
+      />
       <div className={`toast${toast ? " show" : ""}`} role="status">{toast}</div>
     </div>
   );

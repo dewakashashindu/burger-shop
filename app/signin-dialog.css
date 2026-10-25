@@ -1,0 +1,302 @@
+/* The sign-in popup that stands over the page while a booking waits. */
+
+.sd-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(23, 16, 10, 0.52);
+  backdrop-filter: blur(4px);
+  animation: sd-fade 0.25s ease both;
+}
+
+.sd-dialog {
+  position: relative;
+  width: min(506px, 100%);
+  max-height: calc(100svh - 40px);
+  overflow: auto;
+  padding: 32px 34px 26px;
+  border-radius: 18px;
+  background: #f7f2e8;
+  color: #3f3325;
+  box-shadow:
+    0 50px 90px -40px rgba(16, 11, 7, 0.75),
+    0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  animation: sd-rise 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes sd-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sd-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+.sd-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(63, 51, 37, 0.18);
+  border-radius: 50%;
+  background: none;
+  color: #7d6e5c;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.sd-close:hover { border-color: #8a6440; color: #3f3325; }
+
+.sd-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  font-size: 7.5px;
+  letter-spacing: 2.4px;
+  text-transform: uppercase;
+  color: #8a6440;
+}
+.sd-eyebrow i {
+  width: 22px;
+  height: 1px;
+  background: rgba(138, 100, 64, 0.5);
+}
+
+.sd-dialog h2 {
+  margin: 13px 0 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: 29px;
+  line-height: 1.09;
+  letter-spacing: -1px;
+  color: #3a2f22;
+}
+.sd-dialog h2 em { font-style: italic; }
+
+.sd-sub {
+  margin: 10px 0 0;
+  max-width: 42ch;
+  font-size: 11.2px;
+  line-height: 1.8;
+  color: #6b5c49;
+}
+
+.sd-label {
+  display: block;
+  margin: 20px 0 8px;
+  font-size: 9.5px;
+  color: #3f3325;
+}
+.sd-opt {
+  margin-left: 5px;
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  color: #a18a71;
+  text-transform: uppercase;
+}
+
+.sd-phone {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(63, 51, 37, 0.24);
+  border-radius: 6px;
+  background: #fbf8f2;
+}
+.sd-phone .sd-cc {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  padding: 0 11px;
+  border-right: 1px solid rgba(63, 51, 37, 0.14);
+  background: #f4eee2;
+  font-size: 10.5px;
+  color: #6b5c49;
+  white-space: nowrap;
+}
+.sd-phone input {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 13px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12.5px;
+  color: #3f3325;
+  outline: none;
+}
+.sd-phone:focus-within { border-color: #8a6440; }
+
+.sd-input {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 12px 13px;
+  border: 1px solid rgba(63, 51, 37, 0.24);
+  border-radius: 6px;
+  background: #fbf8f2;
+  font: inherit;
+  font-size: 12px;
+  color: #3f3325;
+  outline: none;
+}
+.sd-input:focus { border-color: #8a6440; background: #fffdf8; }
+
+.sd-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px 20px;
+  border: 1px solid #3f3325;
+  border-radius: 40px;
+  background: #3f3325;
+  color: #f7f2e8;
+  font: inherit;
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+.sd-btn:hover:not(:disabled) { background: #2f2619; transform: translateY(-1px); }
+.sd-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.sd-btn svg { width: 15px; height: 15px; }
+.sd-btn.is-ghost {
+  margin-top: 8px;
+  background: none;
+  color: #3f3325;
+  border-color: rgba(63, 51, 37, 0.3);
+}
+.sd-btn.is-ghost:hover { background: #efe7db; }
+
+.sd-note {
+  margin: 11px 0 0;
+  font-size: 9.6px;
+  line-height: 1.8;
+  color: #8a7a63;
+}
+
+.sd-error {
+  margin: 9px 0 0;
+  font-size: 9.6px;
+  line-height: 1.7;
+  color: #a24f3c;
+}
+
+.sd-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(63, 51, 37, 0.12);
+  font-size: 10px;
+  color: #6b5c49;
+}
+.sd-switch button {
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid rgba(63, 51, 37, 0.4);
+  background: none;
+  font: inherit;
+  font-size: 10px;
+  color: #3f3325;
+  cursor: pointer;
+}
+
+.sd-dest {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 17px 0 0;
+  padding: 11px 0;
+  border-block: 1px solid rgba(63, 51, 37, 0.12);
+  font-size: 10.5px;
+}
+.sd-dest button {
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid rgba(63, 51, 37, 0.3);
+  background: none;
+  font: inherit;
+  font-size: 9.5px;
+  color: #6b5c49;
+  cursor: pointer;
+}
+
+.sd-otp {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 2px;
+}
+.sd-otp input {
+  width: 100%;
+  height: 54px;
+  border: 1px solid rgba(63, 51, 37, 0.24);
+  border-radius: 6px;
+  background: #fbf8f2;
+  color: #3f3325;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 21px;
+  text-align: center;
+  outline: none;
+}
+.sd-otp input:focus { border-color: #8a6440; background: #fffdf8; }
+
+.sd-resend {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 13px;
+  font-size: 9.5px;
+  color: #8a7a63;
+}
+.sd-resend button {
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid rgba(63, 51, 37, 0.35);
+  background: none;
+  font: inherit;
+  font-size: 9.5px;
+  color: #3f3325;
+  cursor: pointer;
+}
+.sd-resend button:disabled { color: #a99c8b; border-color: transparent; cursor: default; }
+
+.sd-who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 13px 14px;
+  border: 1px solid rgba(63, 51, 37, 0.14);
+  border-radius: 8px;
+  background: #f1ebde;
+}
+.sd-who svg { width: 30px; height: 30px; flex: none; color: #8a6440; }
+.sd-who b { display: block; font-size: 11.5px; font-weight: 500; }
+.sd-who span { display: block; margin-top: 3px; font-size: 9.5px; line-height: 1.6; color: #7d6e5c; }
+
+@media (max-width: 560px) {
+  .sd-dialog { padding: 26px 20px 22px; }
+  .sd-dialog h2 { font-size: 25px; }
+  .sd-otp { gap: 6px; }
+  .sd-otp input { height: 48px; font-size: 19px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sd-scrim, .sd-dialog { animation: none; }
+  .sd-btn:hover { transform: none; }
+}

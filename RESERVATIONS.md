@@ -2,14 +2,26 @@
 
 ## What the guest sees
 
-`/auth/login` → **Continue as a guest** → `/reserve`
+`/reserve` opens straight away — no sign-in gate, no door to walk through.
 
 The guest chooses **Reservation** (table or room) or **Order online**.
 
 ### Table reservation — one short form
-Full name, phone number, date, time, **local guests** and **foreign guests counted separately**, seating preference and special requests. The total guest count updates live as you type. Numbers are free-form (no 8-guest ceiling). Confirm reservation → confirmation screen.
+**Phone number first, then the name.** The number is the key: a guest who has
+already signed in on this browser gets their name filled in by itself, and on the
+order form their saved addresses appear as one-tap picks. A number that has an
+account but has not been proved here shows a single line — *"This number has an
+account — sign in once and your name comes with it"* — with a **Bring my details**
+button that opens the sign-in popup in place.
 
-There are deliberately **no** food add-ons, packages, floor-plan or table picking, price calculation or multi-step wizard on the table booking.
+Then date, a **time period** (start and end), dining area and table
+from the restaurant's own floor plan, **local guests** and **foreign guests counted
+separately**, and special requests. The total guest count updates live as you type.
+Numbers are free-form (no 8-guest ceiling). Confirm reservation → sign-in popup (if the
+guest is not signed in) → confirmation screen with the `TR-0001` reference.
+
+There are deliberately **no** food add-ons, packages, price calculation or multi-step
+wizard on the table booking.
 
 ### Room reservation
 Categories (garden rooms / courtyard suites / family residences) → stay packages with LKR and USD rates → room list → room page with photo gallery → booking form with a **date range** (check-in/check-out), guests, package, name, phone, **NIC or passport** and requests → live total → confirmation.
@@ -18,14 +30,22 @@ Categories (garden rooms / courtyard suites / family residences) → stay packag
 Kitchen menu → **Add** (the dish photo flies into the cart badge) → cart with quantity changes and removal → delivery or pickup → name, phone, address and notes → confirmation.
 
 ## Routes
-`/reserve`, `/order`, and the six `/auth/*` screens. All are static UI routes marked `noindex`.
+`/reserve`, `/order`, and the two `/auth/*` screens (login, signup). The auth routes are marked `noindex`.
 
-## Scope — not connected
-**No account, reservation, room booking, order or payment is sent anywhere.** There is no backend, database, SMS, Google OAuth, session or payment provider. Every confirmation screen says the details stay in the browser tab. Confirmation references are generated locally and are not real.
+## Scope — what is connected
+- **Reservations** are written to `dbo.Tbl_TabelReservation`.
+- **Orders** are written to `dbo.Tbl_holdUpsCloudTempOO`, one bill per invoice number
+  (`INV-YYYYMMDD-NNN`, Sri Lankan day, `RowLine = MAX + 1` under `TABLOCKX, HOLDLOCK`).
+- **Accounts** live in `dbo.Tbl_CustomerMaster`; the customer code comes from
+  `dbo.Tbl_TxnNumbers` (`A000004`…); sign-in codes live in `dbo.Tbl_WebOtp` and are
+  sent by Text.lk. See `AUTH.md`.
+- Confirming a table, a room or an order asks a guest who is not signed in to sign
+  in **in a popup over the page**; the booking waits and then confirms itself.
+- **No payment** is taken on the site.
 
-Rates, packages, delivery fee, room names, menu prices and times are **illustrative placeholders** for the layout and must be replaced with confirmed business data. Room photographs are AI-generated concept images, not verified photography of the property.
-
-The old local booking-draft component remains unreferenced in `app/App.tsx`; public booking actions no longer open it.
+Rates, packages, delivery fee, room names and times are **placeholders** for the layout
+and must be replaced with confirmed business data. Room photographs are illustrative
+concept images, not verified photography of the property.
 
 ## Files
 - `app/reserve/BookingFlow.tsx` — the whole reservation/order UI
