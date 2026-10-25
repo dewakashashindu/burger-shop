@@ -461,6 +461,8 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
   const [orderCat, setOrderCat] = useState("All dishes");
   const [orderGroup, setOrderGroup] = useState("");
   const [orderSub, setOrderSub] = useState("");
+  const [orderSearch, setOrderSearch] = useState("");
+  const orderSearchRef = useRef<HTMLInputElement>(null);
 
   const items = Object.entries(cart).flatMap(([id, qty]) => {
     const dish = dishes.find((d) => d.id === id);
@@ -1338,6 +1340,15 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
   const activeCat = orderCats.includes(orderCat) ? orderCat : "All dishes";
   const orderInCat = activeCat === "All dishes" ? dishes : dishes.filter((d) => (d.category || "Food") === activeCat);
   const orderGroupNames = activeCat === "All dishes" ? [] : Array.from(new Set(orderInCat.map((d) => d.group || "").filter(Boolean)));
+  // The search looks through the open category (All dishes = everything), the
+  // same rule the menu page follows: never just the level you are standing on.
+  const orderQuery = orderSearch.trim().toLocaleLowerCase();
+  const orderHit = (d: Dish) =>
+    [d.name, d.desc, d.tag, d.category, d.group, d.sub]
+      .filter(Boolean)
+      .join(" ")
+      .toLocaleLowerCase()
+      .includes(orderQuery);
   const orderInGroup = orderGroup ? orderInCat.filter((d) => d.group === orderGroup) : orderInCat;
   const orderSubNames = orderGroup ? Array.from(new Set(orderInGroup.map((d) => d.sub || "").filter(Boolean))) : [];
   const buildCollection = (name: string, rows: Dish[], subCount: number) => ({
@@ -1350,7 +1361,9 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
   });
   let orderCollections: ReturnType<typeof buildCollection>[] = [];
   let orderVisible: Dish[];
-  if (activeCat === "All dishes") {
+  if (orderQuery) {
+    orderVisible = orderInCat.filter(orderHit);
+  } else if (activeCat === "All dishes") {
     orderVisible = dishes;
   } else if (!orderGroup) {
     orderCollections = orderGroupNames.map((name) => {
@@ -1364,7 +1377,9 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
   } else {
     orderVisible = orderInGroup.filter((d) => d.sub === orderSub);
   }
-  const orderStatusText = [
+  const orderStatusText = orderQuery
+    ? `${orderVisible.length} ${orderVisible.length === 1 ? "dish" : "dishes"} matching “${orderSearch.trim()}”`
+    : [
     orderCollections.length ? `${orderCollections.length} sub ${orderCollections.length === 1 ? "category" : "categories"}` : "",
     orderVisible.length ? `${orderVisible.length} ${orderVisible.length === 1 ? "dish" : "dishes"}${orderSub ? ` in ${orderSub}` : orderGroup ? ` in ${orderGroup}` : activeCat !== "All dishes" ? ` in ${activeCat}` : ""}` : (orderCollections.length ? `${orderInCat.length} dishes in ${activeCat}` : ""),
   ].filter(Boolean).join(" · ");
@@ -1383,19 +1398,33 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
           <button type="button" aria-pressed={order.method === "pickup"} onClick={() => setOrder({ ...order, method: "pickup" })}>Pickup</button>
         </div>
       </div>
-      <div className="wm-category-panel">
+      <div className="wm-category-panel order-panel">
         <p className="eyebrow">Explore the menu</p>
         <div className="wm-category-list" role="group" aria-label="Filter the order menu by category">
           {orderCats.map((c) => (
-            <button key={c} type="button" aria-pressed={activeCat === c} onClick={() => { setOrderCat(c); setOrderGroup(""); setOrderSub(""); }}>
+            <button key={c} type="button" aria-pressed={activeCat === c} onClick={() => { setOrderCat(c); setOrderGroup(""); setOrderSub(""); setOrderSearch(""); }}>
               {c}<span>{c === "All dishes" ? dishes.length : dishes.filter((d) => (d.category || "Food") === c).length}</span>
             </button>
           ))}
         </div>
+        <label className="wm-search order-search">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" stroke="currentColor" strokeWidth="1.5" /><path d="m16 16 5 5" stroke="currentColor" strokeWidth="1.5" /></svg>
+          <input
+            ref={orderSearchRef}
+            type="search"
+            value={orderSearch}
+            onChange={(event) => setOrderSearch(event.target.value)}
+            onKeyDown={(event) => { if (event.key === "Escape") setOrderSearch(""); }}
+            aria-label="Search the order menu"
+            placeholder="Search the menu…"
+            autoComplete="off"
+          />
+          {orderSearch && <button type="button" aria-label="Clear search" onClick={() => { setOrderSearch(""); orderSearchRef.current?.focus(); }}>×</button>}
+        </label>
       </div>
       {activeCat !== "All dishes" && (
         <div className="order-path" aria-label="Menu path">
-          <button type="button" onClick={() => { setOrderCat("All dishes"); setOrderGroup(""); setOrderSub(""); }}>All dishes</button>
+          <button type="button" onClick={() => { setOrderCat("All dishes"); setOrderGroup(""); setOrderSub(""); setOrderSearch(""); }}>All dishes</button>
           <i aria-hidden="true">/</i>
           {orderGroup
             ? <button type="button" onClick={() => { setOrderGroup(""); setOrderSub(""); }}>{activeCat}</button>
@@ -1412,6 +1441,23 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
       <p className="order-status micro" role="status">{orderStatusText}</p>
       <div className="cart-layout">
         <div className="order-grid">
+          {orderQuery && !orderVisible.length && (
+            <div className="order-empty">
+              <span className="eyebrow">Nothing by that name</span>
+              <h3>A little different, perhaps?</h3>
+              <p>
+                No dishes match “{orderSearch.trim()}”{activeCat !== "All dishes" ? ` in ${activeCat}` : ""}. Try another
+                word, or look through every dish on the menu.
+              </p>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => { setOrderCat("All dishes"); setOrderGroup(""); setOrderSub(""); setOrderSearch(""); orderSearchRef.current?.focus(); }}
+              >
+                Show all {dishes.length} dishes <Arrow />
+              </button>
+            </div>
+          )}
           {orderCollections.map((c) => (
             <article
               className="dish is-coll"
