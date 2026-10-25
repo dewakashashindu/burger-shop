@@ -346,12 +346,29 @@ h3 em {
   align-self: center;
 }
 .arch-image {
+  position: relative;
   height: clamp(490px, 64vh, 720px);
   overflow: hidden;
   border-radius: 300px 300px 6px 6px;
 }
 .arch-image img {
   object-position: 53% center;
+}
+/* The hero clip plays on top of its own still. The still stays visible if the
+   clip is missing or the visitor prefers less motion. */
+.arch-image__clip {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 53% center;
+  display: block;
+}
+@media (prefers-reduced-motion: reduce) {
+  .arch-image__clip {
+    display: none;
+  }
 }
 .image-caption {
   display: flex;

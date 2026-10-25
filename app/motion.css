@@ -44,12 +44,86 @@
   transform: translateZ(0);
   will-change: left, top, width, height, border-radius;
 }
-.motion-ready .motion-frame > img {
+.motion-ready .motion-frame > img,
+.motion-ready .motion-frame > .motion-frame__clip {
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: 53% center;
   will-change: transform;
+}
+/* The looping clip sits over its own still and follows every move of the
+   frame, so the photo can morph into the arch while it plays. */
+.motion-ready .motion-frame > .motion-frame__clip {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+/* ---------- the dissolve ----------
+   The still underneath is softened and masked, so the left side of the
+   photograph melts into the page instead of ending on a hard edge. The sharp
+   clip sits on top with its own feather, and a cream veil seals the join.
+   --soft runs 0 → 1 as the frame grows to full screen, which pulls both masks
+   back so the photograph is completely clean once it fills the viewport. */
+.motion-ready .motion-frame > img {
+  filter: blur(30px) saturate(1.05);
+  scale: 1.18;
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.06) 0%,
+    rgba(0, 0, 0, 0.55) calc(22% - 22% * var(--soft, 0)),
+    #000 calc(50% - 50% * var(--soft, 0))
+  );
+  mask-image: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.06) 0%,
+    rgba(0, 0, 0, 0.55) calc(22% - 22% * var(--soft, 0)),
+    #000 calc(50% - 50% * var(--soft, 0))
+  );
+}
+.motion-ready .motion-frame > .motion-frame__clip {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent calc(1px + 33% * var(--soft, 0)),
+    rgba(0, 0, 0, 0.55) calc(1px + 47% * var(--soft, 0)),
+    #000 calc(1px + 64% * var(--soft, 0))
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent calc(1px + 33% * var(--soft, 0)),
+    rgba(0, 0, 0, 0.55) calc(1px + 47% * var(--soft, 0)),
+    #000 calc(1px + 64% * var(--soft, 0))
+  );
+}
+.motion-ready .motion-frame__melt {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 44%;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    var(--cream) 0%,
+    #f5f1e9f7 14%,
+    #f5f1e9d1 29%,
+    #f5f1e975 49%,
+    #f5f1e929 70%,
+    #f5f1e900 100%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-ready .motion-frame > .motion-frame__clip {
+    display: none;
+  }
+  .motion-ready .motion-frame > img {
+    filter: none;
+    scale: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
 }
 .motion-whitewash {
   position: absolute;
@@ -94,7 +168,7 @@
   left: 4.7vw;
   top: 50%;
   transform: translateY(-50%);
-  max-width: 46%;
+  max-width: min(52%, 680px);
   margin-top: 5px;
   padding: 0;
 }
@@ -416,12 +490,63 @@
     margin: 25px 20px 0;
   }
   .motion-ready .hero-copy {
-    left: 23px;
-    top: 104px;
+    left: 22px;
+    top: var(--hero-copy-top, 104px);
     transform: none;
-    width: calc(100% - 46px);
+    width: calc(100% - 44px);
     max-width: none;
     margin: 0;
+  }
+  /* On a phone the photograph comes first and feathers away at the bottom, so
+     the headline only ever rests on the softest part of the picture. */
+  .motion-ready .motion-frame > img {
+    filter: blur(24px) saturate(1.04);
+    scale: 1.16;
+    -webkit-mask-image: linear-gradient(
+      180deg,
+      #000 0%,
+      #000 calc(58% + 42% * var(--soft, 0)),
+      rgba(0, 0, 0, 0.5) calc(79% + 21% * var(--soft, 0)),
+      transparent calc(100% - 0% * var(--soft, 0))
+    );
+    mask-image: linear-gradient(
+      180deg,
+      #000 0%,
+      #000 calc(58% + 42% * var(--soft, 0)),
+      rgba(0, 0, 0, 0.5) calc(79% + 21% * var(--soft, 0)),
+      transparent calc(100% - 0% * var(--soft, 0))
+    );
+  }
+  .motion-ready .motion-frame > .motion-frame__clip {
+    -webkit-mask-image: linear-gradient(
+      180deg,
+      #000 0%,
+      #000 calc(52% + 48% * var(--soft, 0)),
+      rgba(0, 0, 0, 0.5) calc(78% + 22% * var(--soft, 0)),
+      transparent calc(100% - 0% * var(--soft, 0))
+    );
+    mask-image: linear-gradient(
+      180deg,
+      #000 0%,
+      #000 calc(52% + 48% * var(--soft, 0)),
+      rgba(0, 0, 0, 0.5) calc(78% + 22% * var(--soft, 0)),
+      transparent calc(100% - 0% * var(--soft, 0))
+    );
+  }
+  .motion-ready .motion-frame__melt {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: 60%;
+    background: linear-gradient(
+      180deg,
+      #f5f1e900 0%,
+      #f5f1e94d 30%,
+      #f5f1e9b3 52%,
+      #f5f1e9ed 74%,
+      var(--cream) 100%
+    );
   }
   .motion-ready .hero-copy .eyebrow {
     font-size: 7px;
@@ -452,7 +577,23 @@
     gap: 16px;
   }
   .motion-ready .hero-footnote {
-    display: none;
+    display: flex;
+    margin-top: 26px;
+    gap: 11px;
+  }
+  .motion-ready .hero-footnote .little-seal {
+    width: 34px;
+    height: 34px;
+  }
+  .motion-ready .hero-footnote .little-seal svg {
+    width: 20px;
+    height: 23px;
+  }
+  .motion-ready .hero-footnote strong {
+    font-size: 8px;
+  }
+  .motion-ready .hero-footnote span {
+    font-size: 7px;
   }
   .motion-ready .heading-period {
     font-size: 0.35em;
@@ -468,9 +609,7 @@
     font-size: 26px;
   }
   .motion-ready .motion-caption {
-    font-size: 4px;
-    letter-spacing: 0.45px;
-    gap: 5px;
+    display: none;
   }
   .motion-ready .scroll-hint {
     bottom: 23px;

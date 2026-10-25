@@ -1,6 +1,6 @@
 {
-  "version": "v10 \u2014 reservations + online order integrated (table form, rooms, cart)",
-  "date": "2026-10-22",
+  "version": "v13 — landing hero: full-bleed clip + floating card (approved sketch)",
+  "date": "2026-10-25",
   "framework": "Original burger-shop: Next.js 16.4.2 / React 19 / Tailwind CSS 4",
   "status": "PASS",
   "checks": [
@@ -107,17 +107,17 @@
     "passed": true,
     "viewportConfigurations": 8,
     "checks": [
-      "Approved arch to fullscreen motion",
-      "Ivory wash with complete food grid",
-      "Exact landing in measured destination arch",
-      "Reverse scrolling",
-      "Eight viewport sizes",
-      "No page errors or horizontal overflow",
-      "Desktop and mobile navigation",
-      "Deep links",
-      "Sri Lankan menu route, filters, dish details, Escape, focus restoration",
-      "Booking draft save, download, clear",
-      "No-JavaScript and reduced-motion normal-flow fallbacks"
+      "Triptych hero: three panes, middle tallest, outer panes offset",
+      "Hero owns the first screen; panes clear the fixed header and end on the page margin",
+      "Words column clear of the first pane; headline stays in its column",
+      "A looping clip in all three panes, each with its own crop",
+      "Scroll drift: --tp-p advances and each pane moves at its own speed",
+      "Phone: words, then three panes; hero ends inside the first screen",
+      "Reduced motion: panes never move and never transform",
+      "No page errors or horizontal overflow at any width",
+      "Desktop and mobile navigation, deep links",
+      "Kitchen and story sections follow the hero in normal flow",
+      "No-JavaScript readable page"
     ]
   },
   "storyRegression": {
@@ -129,7 +129,7 @@
       "Same full-bleed cinematic scene and paper wipe",
       "Chef reveal and card hover preserved",
       "Footer ambient pan still active without its control",
-      "Home \u2194 Story and kitchen timeline navigation",
+      "Home ↔ Story and kitchen timeline navigation",
       "Menu and chef dialogs",
       "Reduced-motion and no-JS fallbacks"
     ]
@@ -172,7 +172,8 @@
       "next.config.ts": "3aaeaaf92d6eddaccbef03e5e429e0418cb6ff8f3dded8b2e46275be15bb1bbb"
     },
     "homeControllerBlockSHA256": "5351b1c48ea8b3fa0013a7b4501d4ce9121e7b65ae33ab2bee3bf1f9bad08527",
-    "animationTimingOrStyleChanges": false
+    "animationTimingOrStyleChanges": true,
+    "note": "The arch sequence was replaced by the approved Triptych hero in v11; app/motion.css is unchanged but its .motion-ready rules are now inert."
   },
   "ownerInformation": {
     "menu": "Six illustrative Sri Lankan dishes, no confirmed prices, no guaranteed allergen claims",
@@ -252,8 +253,8 @@
       "Password visibility toggles; required, length and confirmation validation",
       "Name/phone tab-memory draft; passwords and credentials not retained",
       "Google and sign-in actions state service is not connected",
-      "Forgot \u2192 OTP \u2192 new-password UI transition; no verified code or token",
-      "Signup \u2192 verification UI; no account created",
+      "Forgot → OTP → new-password UI transition; no verified code or token",
+      "Signup → verification UI; no account created",
       "Privacy dialog Escape and focus restoration",
       "No leaked scroll lock after auth navigation",
       "Six routes at nine widths without overflow",
@@ -279,13 +280,13 @@
       "/order"
     ],
     "checks": [
-      "Login \u2192 Continue as a guest \u2192 reservation chooser",
+      "Login → Continue as a guest → reservation chooser",
       "Table booking is a single form (no wizard, no food add-ons, no packages, no floor plan)",
       "Local and foreign guests entered separately with free numeric counts and a live total",
       "Validation for name, phone, date, time and at least one guest; confirmation screen",
       "Room categories, stay packages with LKR/USD, photo gallery, date range, NIC/passport, package total",
       "Order menu, add-to-cart flight animation, cart quantities/removal, delivery or pickup checkout, confirmation",
-      "Nine widths 320\u20131920 with no horizontal overflow",
+      "Nine widths 320–1920 with no horizontal overflow",
       "Reduced-motion and no-JavaScript readable",
       "No POST requests, page errors, accounts, payments or submissions"
     ],
@@ -300,5 +301,68 @@
       360,
       320
     ]
+  },
+  "footerCredit": {
+    "poweredBy": "powered by microechef — kept on every non-auth page",
+    "removed": "The redundant 'Our kitchen' footer link was removed; 'Our story' and 'The menu' remain."
+  },
+  "cacheDelivery": {
+    "passed": true,
+    "problem": "Prerendered pages were served with `Cache-Control: s-maxage=31536000`; a shared cache (preview proxy / CDN) could keep returning the pre-Triptych document for a year, so the new design was invisible even though the server rendered it.",
+    "fix": [
+      "next.config.ts `headers()`: every HTML document route answers `Cache-Control: no-store, max-age=0, must-revalidate` + `Pragma: no-cache`",
+      "Static assets are untouched: `/_next/static/**` keeps `public, max-age=31536000, immutable`; images and fonts keep `public, max-age=0` (revalidate)",
+      "/hero.mp4 gets `public, max-age=86400, stale-while-revalidate=604800` so the three panes share one download",
+      "RSC prefetch payloads (`?_rsc=…`) are excluded via a `missing` query condition — forcing no-store there made Chromium cancel the prefetch stream",
+      "Response header `X-Mila-Build: triptych-13` identifies the running build",
+      "Live server moved to port 3001 so the preview URL is a fresh cache key"
+    ],
+    "verified": [
+      "/ /menu /contact /reserve /order /auth/login → 200 + no-store + X-Mila-Build: triptych-13",
+      "/?_rsc=… → Next default caching; prefetch completes (no aborted requests)",
+      "Rendered DOM: .triptych-hero ×1, .tp-panel ×3, h1 'Your kind of place. ✳', overflowX 0 at 1440×900 and 390×844",
+      "0 page errors, 0 failed requests in the final run"
+    ]
+  },
+  "regressionsAfterCacheFix": {
+    "passed": true,
+    "suites": [
+      "hero-layout 21/21",
+      "hero-video 14/14",
+      "motion 11/11",
+      "contact 17/17",
+      "redirect 13/13",
+      "tables 17/17",
+      "entry-flow 28/28",
+      "fresh-order 7/7"
+    ]
+  },
+  "videoCardHero": {
+    "passed": true,
+    "direction": "Approved sketch: the clip fills the hero edge to edge, the words ride in a cream card laid over it (top-left on desktop, low on the phone), four rounded corners.",
+    "checks": [
+      "hero-layout 33/33 — hero fills the first screen, picture edge to edge, one clip covering it, card on the picture with 18 px corners, card 522x429 at 1440x900, headline inside the card, header light over the picture, next section below the fold, no sideways spill",
+      "hero-layout — the card lets go: --vc-p advances, opacity reaches 0, visibility hidden (nothing clickable behind), and the clip is seen alone before the cream part arrives",
+      "hero-layout — the card comes home on the way back up; the navigation spy still marks Our story and clears again at the top",
+      "hero-layout — phone: card low with 16 px gutters, clear of the floating pills",
+      "hero-layout — reduced motion: the card never transforms; no JavaScript: card, words, clip, still and a 900 px hero are all server-rendered",
+      "hero-video 14/14 — /hero.mp4, loop, muted, playsInline, cover, poster, decoded, running, framed on the room, still running while pinned and at the top",
+      "motion 11/11 — the card and its words still arrive on load (msFadeIn + msRise), page lift, reveals, busy button, reduced motion"
+    ]
+  },
+  "regressionsAfterVideoHero": {
+    "passed": true,
+    "suites": [
+      "hero-layout 33/33",
+      "hero-video 14/14",
+      "motion 11/11",
+      "contact 17/17",
+      "redirect 13/13",
+      "tables 17/17",
+      "entry-flow 28/28",
+      "fresh-order 7/7"
+    ],
+    "routes": "7-route sweep: / /menu /contact /our-story /reserve /order /auth/login — expected titles, 0 console/page errors, overflow 0",
+    "build": "tsc --noEmit clean, eslint app clean, next build passes"
   }
 }

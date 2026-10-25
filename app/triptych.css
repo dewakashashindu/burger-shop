@@ -1,0 +1,232 @@
+/* ============================================================
+   The Triptych landing — approved direction 2.
+
+   Three tall panes hold three crops of the same room and drift at
+   different speeds while the page scrolls, while the words lift a
+   little faster than the page does.
+
+   Nothing here is required to read the page: the panes are ordinary
+   figures in normal flow, and all the movement is one custom
+   property, --tp-p (0 → 1), painted by useTriptychScroll from inside
+   a requestAnimationFrame. A visitor without JavaScript, or with
+   reduced motion, simply gets the still hero.
+   ============================================================ */
+
+.triptych-hero {
+  --tp-p: 0;
+  position: relative;
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: minmax(300px, 31%) 1fr;
+  column-gap: 5vw;
+  align-items: center;
+  padding: 132px 4.7vw 46px;
+}
+
+/* ---------- words ---------- */
+.tp-copy {
+  max-width: 440px;
+  will-change: transform;
+}
+.tp-live .tp-copy {
+  transform: translate3d(0, calc(var(--tp-p) * -32px), 0);
+}
+.tp-copy h1 {
+  font-size: clamp(52px, 5.35vw, 78px);
+  letter-spacing: -3.4px;
+  line-height: 1;
+  margin: 22px 0 20px;
+}
+.tp-copy .hero-description {
+  font-size: 11px;
+  line-height: 1.95;
+}
+.tp-copy .hero-actions {
+  margin: 24px 0 30px;
+}
+.tp-copy .hero-footnote {
+  margin-bottom: 0;
+}
+
+/* ---------- the three panes ---------- */
+.tp-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  min-width: 0;
+}
+.tp-panels {
+  display: grid;
+  grid-template-columns: 1fr 1.16fr 1fr;
+  gap: 12px;
+  height: min(63vh, 610px);
+  min-height: 360px;
+}
+.tp-panel {
+  position: relative;
+  overflow: hidden;
+  margin: 0;
+  border-radius: 4px;
+  background: #e9e2d6;
+}
+.tp-panel--one {
+  margin-top: 58px;
+}
+.tp-panel--three {
+  margin-bottom: 58px;
+}
+
+/* The photograph is taller than its pane so it can drift without
+   ever showing an edge. */
+.tp-media {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -10%;
+  height: 130%;
+}
+.tp-media img {
+  object-fit: cover;
+}
+.tp-clip {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tp-panel--one .tp-media img,
+.tp-panel--one .tp-clip {
+  object-position: 20% 50%;
+}
+.tp-panel--two .tp-media img,
+.tp-panel--two .tp-clip {
+  object-position: 54% 50%;
+}
+.tp-panel--three .tp-media img,
+.tp-panel--three .tp-clip {
+  object-position: 86% 50%;
+}
+.tp-live .tp-panel--one .tp-media {
+  transform: translate3d(0, calc(var(--tp-p) * -4.5%), 0) scale(1.04);
+}
+.tp-live .tp-panel--two .tp-media {
+  transform: translate3d(0, calc(var(--tp-p) * -9%), 0) scale(1.04);
+}
+.tp-live .tp-panel--three .tp-media {
+  transform: translate3d(0, calc(var(--tp-p) * -15%), 0) scale(1.05);
+}
+
+.tp-num {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  z-index: 3;
+  font-size: 7px;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: #fdfaf3;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55);
+}
+.tp-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 6.5px;
+  letter-spacing: 1.55px;
+  text-transform: uppercase;
+  color: #8a7b64;
+}
+.triptych-hero .scroll-hint {
+  grid-column: 1 / -1;
+  margin-top: 30px;
+  /* The Sign-in and Order pills live in the bottom-right corner. */
+  padding-right: clamp(60px, 12vw, 170px);
+}
+.tp-copy .text-link {
+  white-space: nowrap;
+}
+
+/* Shorter laptops: the pills and the panels share a small bottom edge,
+   so the stack tightens up and everything stays clear of them. */
+@media (min-width: 768px) and (max-height: 800px) {
+  .triptych-hero {
+    padding-top: 112px;
+    padding-bottom: 28px;
+  }
+  .tp-panels {
+    height: min(56vh, 520px);
+  }
+  .tp-panel--one {
+    margin-top: 44px;
+  }
+  .tp-panel--three {
+    margin-bottom: 44px;
+  }
+  .triptych-hero .scroll-hint {
+    margin-top: 22px;
+    padding: 18px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tp-copy,
+  .tp-media {
+    transform: none !important;
+  }
+}
+
+/* ---------- phone ---------- */
+@media (max-width: 767px) {
+  .triptych-hero {
+    display: block;
+    min-height: 0;
+    padding: 100px 20px 0;
+  }
+  .tp-copy {
+    max-width: none;
+  }
+  .tp-copy h1 {
+    font-size: clamp(54px, 15vw, 72px);
+    letter-spacing: -3.4px;
+    margin: 20px 0 20px;
+  }
+  .tp-stack {
+    margin-top: 22px;
+    gap: 11px;
+  }
+  .tp-panels {
+    height: 270px;
+    min-height: 0;
+    gap: 8px;
+  }
+  .tp-panel {
+    border-radius: 3px;
+  }
+  .tp-panel--one {
+    margin-top: 24px;
+  }
+  .tp-panel--three {
+    margin-bottom: 24px;
+  }
+  .tp-num {
+    left: 8px;
+    top: 8px;
+    font-size: 5.5px;
+    letter-spacing: 1px;
+  }
+  .tp-caption {
+    font-size: 5.5px;
+    letter-spacing: 1.1px;
+  }
+  .triptych-hero .scroll-hint {
+    margin-top: 16px;
+    padding: 18px 0;
+  }
+  /* The floating pills own the right-hand corner, so the arrow rides
+     alongside the words instead of sitting under them. */
+  .triptych-hero .scroll-arrow {
+    margin-left: 14px;
+  }
+}

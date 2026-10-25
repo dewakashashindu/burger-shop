@@ -1,0 +1,308 @@
+/* ============================================================
+   The landing hero, drawn from the approved sketch.
+
+   The clip fills the whole hero — edge to edge, behind the header
+   as well — and the words ride in a cream card laid over it: top
+   left on a desktop, low on a phone. Four corners rounded.
+
+   Scrolling does three things, in this order:
+     1. the card fades out and lifts a little;
+     2. the clip is left on its own, whole, nothing on top of it;
+     3. only then does the cream part of the page rise over it.
+
+   (1) and (2) are one custom property, --vc-p (0 → 1), painted by
+   useHeroCardFade from inside a requestAnimationFrame. (3) is the
+   sticky hero: the hero holds still for the length of the gap the
+   next section carries as a margin-top. A visitor with JavaScript
+   off, or with reduced motion, simply gets the still card.
+   ============================================================ */
+
+.vc-stage {
+  position: relative;
+}
+
+.hero-section.vc-hero {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: block;
+  height: 100svh;
+  min-height: 560px;
+  padding: 0;
+  overflow: hidden;
+  background: #241a12;
+  color: #f8f3ea;
+  --vc-p: 0;
+}
+
+/* ---------- the moving picture ---------- */
+.vc-media {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.vc-still,
+.vc-clip {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 52% 55%;
+}
+.vc-clip {
+  z-index: 1;
+}
+.vc-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(16, 12, 9, 0.66) 0%,
+      rgba(16, 12, 9, 0.24) 12%,
+      rgba(16, 12, 9, 0) 26%
+    ),
+    linear-gradient(
+      0deg,
+      rgba(16, 12, 9, 0.7) 0%,
+      rgba(16, 12, 9, 0.2) 13%,
+      rgba(16, 12, 9, 0) 28%
+    );
+}
+
+/* ---------- the card ---------- */
+.vc-card {
+  position: absolute;
+  z-index: 5;
+  left: 4.7vw;
+  top: 104px;
+  width: min(522px, 44vw);
+  padding: 46px 46px 38px;
+  border-radius: 18px;
+  background: #f7f2e8;
+  color: #3f3325;
+  box-shadow:
+    0 42px 74px -38px rgba(16, 11, 7, 0.66),
+    0 1px 0 rgba(255, 255, 255, 0.6) inset;
+  opacity: calc(1 - var(--vc-p));
+  transform: translate3d(0, calc(var(--vc-p) * -30px), 0)
+    scale(calc(1 - var(--vc-p) * 0.015));
+  will-change: opacity, transform;
+}
+.vc-cleared .vc-card {
+  visibility: hidden;
+}
+.vc-card .eyebrow {
+  color: #8a6440;
+}
+.vc-card h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  font-size: clamp(42px, 4.35vw, 63px);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  margin: 18px 0 0;
+  color: #3a2f22;
+}
+.vc-card .heading-period {
+  margin-top: 6px;
+  font-size: 0.28em;
+}
+.vc-card .hero-description {
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: #5d5040;
+  margin: 18px 0 0;
+}
+.vc-card .hero-actions {
+  margin: 26px 0 0;
+  gap: 22px;
+}
+.vc-card .button-dark {
+  padding: 15px 22px;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+}
+.vc-card .text-link {
+  font-size: 10.5px;
+}
+.vc-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 30px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(63, 51, 37, 0.14);
+  font-size: 7.5px;
+  letter-spacing: 2.4px;
+  text-transform: uppercase;
+  color: #8a6440;
+}
+
+/* ---------- what sits on the floor of the hero ---------- */
+.vc-hint.scroll-hint {
+  position: absolute;
+  z-index: 5;
+  left: 4.7vw;
+  right: calc(4.7vw + 210px);
+  bottom: 26px;
+  margin: 0;
+  padding: 18px 0 0;
+  border-top: 1px solid rgba(248, 243, 234, 0.24);
+  color: rgba(250, 245, 236, 0.78);
+  opacity: calc(1 - var(--vc-p));
+}
+.vc-hint i {
+  background: rgba(250, 245, 236, 0.6);
+}
+.vc-hint .scroll-arrow {
+  color: #f8f3ea;
+}
+
+/* ---------- the header, while it is over the picture ---------- */
+.video-hero-page .navbar:not(.scrolled):not(.menu-is-open) {
+  background: linear-gradient(
+    180deg,
+    rgba(16, 12, 9, 0.58) 0%,
+    rgba(16, 12, 9, 0.18) 62%,
+    rgba(16, 12, 9, 0) 100%
+  );
+  backdrop-filter: none;
+  box-shadow: none;
+  color: #f8f3ea;
+}
+.video-hero-page .navbar:not(.scrolled):not(.menu-is-open) .brand__logo {
+  filter: brightness(0) invert(1);
+  box-shadow: 0 0 0 1px rgba(248, 243, 234, 0.28);
+}
+.video-hero-page .navbar:not(.scrolled):not(.menu-is-open) .desktop-nav > a {
+  color: #f8f3ea;
+  opacity: 0.86;
+}
+.video-hero-page
+  .navbar:not(.scrolled):not(.menu-is-open)
+  .desktop-nav
+  > a::after {
+  background: #f8f3ea;
+}
+.video-hero-page .navbar:not(.scrolled):not(.menu-is-open) .button-outline {
+  color: #f8f3ea;
+  border-color: rgba(248, 243, 234, 0.52);
+}
+.video-hero-page .navbar:not(.scrolled):not(.menu-is-open) .hamburger span {
+  background: #f8f3ea;
+}
+
+/* ---------- the next part of the page ---------- */
+/* The gap is what lets the clip be seen on its own before the cream
+   part slides up over it. The section is opaque, so nothing of the
+   hero shows through, and the sticky hero stops with it. */
+.vc-next {
+  position: relative;
+  z-index: 2;
+  margin-top: clamp(70px, 46svh, 460px);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -34px 60px -50px rgba(16, 11, 7, 0.75);
+}
+
+/* ---------- tablet ---------- */
+@media (min-width: 768px) and (max-width: 1100px) {
+  .vc-card {
+    width: min(470px, 54vw);
+    padding: 36px 34px 30px;
+    top: 108px;
+  }
+  .vc-card h1 {
+    font-size: clamp(40px, 5.2vw, 54px);
+  }
+  .vc-card .hero-actions {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .vc-hint.scroll-hint {
+    right: calc(4.7vw + 180px);
+  }
+}
+
+/* ---------- phone ---------- */
+@media (max-width: 767px) {
+  .hero-section.vc-hero {
+    height: 100svh;
+    min-height: 600px;
+  }
+  .vc-card {
+    left: 16px;
+    right: 16px;
+    top: auto;
+    bottom: 128px;
+    width: auto;
+    padding: 24px 22px 20px;
+    border-radius: 16px;
+  }
+  .vc-card h1 {
+    font-size: clamp(36px, 10.2vw, 46px);
+    margin-top: 12px;
+  }
+  .vc-card .hero-description {
+    font-size: 11.5px;
+    line-height: 1.7;
+    margin-top: 12px;
+  }
+  .vc-card .hero-actions {
+    margin-top: 18px;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .vc-card .button-dark {
+    padding: 13px 18px;
+    font-size: 9px;
+  }
+  .vc-meta {
+    margin-top: 20px;
+    padding-top: 12px;
+    font-size: 6.5px;
+    letter-spacing: 2px;
+  }
+  .vc-hint.scroll-hint {
+    display: none;
+  }
+  .vc-next {
+    margin-top: 16svh;
+    border-radius: 18px 18px 0 0;
+  }
+}
+
+/* ---------- short laptops ---------- */
+@media (min-width: 768px) and (max-height: 760px) {
+  .vc-card {
+    top: 96px;
+    padding: 34px 34px 28px;
+    width: min(470px, 42vw);
+  }
+  .vc-card h1 {
+    font-size: clamp(38px, 3.8vw, 50px);
+  }
+  .vc-card .hero-description {
+    font-size: 11.5px;
+    line-height: 1.7;
+    margin-top: 14px;
+  }
+  .vc-card .hero-actions {
+    margin-top: 20px;
+  }
+  .vc-meta {
+    margin-top: 22px;
+    padding-top: 12px;
+  }
+}
+
+/* ---------- reduced motion: the card simply stays ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .vc-card,
+  .vc-hint.scroll-hint {
+    transform: none;
+  }
+}

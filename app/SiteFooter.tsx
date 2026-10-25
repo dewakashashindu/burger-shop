@@ -132,7 +132,6 @@ export default function SiteFooter() {
             <h3>Explore</h3>
             <ul>
               <li><Link href="/">Home</Link></li>
-              <li><Link href="/#kitchen">Our kitchen</Link></li>
               <li><Link href="/our-story">Our story</Link></li>
               <li><Link href="/menu">The menu</Link></li>
             </ul>

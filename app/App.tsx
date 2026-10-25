@@ -13,6 +13,7 @@ import OrderPill from "./OrderPill";
 import SignInFab from "./SignInFab";
 import MotionBoot from "./MotionBoot";
 import ContactContent from "./ContactContent";
+import HeroClip from "./HeroClip";
 import {
   Suspense,
   useCallback,
@@ -138,28 +139,23 @@ function useIsMobile() {
   );
 }
 type RestaurantSection = "home" | "kitchen" | "story";
-const SCROLL_STOPS: Record<RestaurantSection, number> = {
-  home: 0,
-  kitchen: 0.56,
-  story: 0.98,
-};
 function isRestaurantSection(
   value: string | undefined,
 ): value is RestaurantSection {
   return value === "home" || value === "kitchen" || value === "story";
 }
+const SECTION_IDS: RestaurantSection[] = ["home", "kitchen", "story"];
+
+/** Smooth-scroll to a section of the homepage, landing clear of the fixed header. */
 function navigateSection(id: RestaurantSection, behavior?: ScrollBehavior) {
-  const runway = document.querySelector<HTMLElement>(
-    ".arch-scroll.motion-ready",
-  );
-  const stage = runway?.querySelector<HTMLElement>(".scroll-stage");
-  if (!runway || !stage) return false;
-  const top = runway.getBoundingClientRect().top + window.scrollY;
-  const distance = Math.max(0, runway.offsetHeight - stage.clientHeight);
-  window.scrollTo({
-    top: top + distance * SCROLL_STOPS[id],
-    behavior: behavior ?? "smooth",
-  });
+  const target = document.getElementById(id);
+  if (!target) return false;
+  const navH = document.querySelector<HTMLElement>(".navbar")?.offsetHeight ?? 0;
+  const top =
+    id === "home"
+      ? 0
+      : target.getBoundingClientRect().top + window.scrollY - navH;
+  window.scrollTo({ top: Math.max(0, top), behavior: behavior ?? "smooth" });
   try {
     window.history.replaceState(null, "", `#${id}`);
   } catch {
@@ -168,224 +164,89 @@ function navigateSection(id: RestaurantSection, behavior?: ScrollBehavior) {
   return true;
 }
 
-/** Progressive enhancement: the server HTML is a readable, normal-flow page.
- * One continuous image is animated only after the controller is ready.
- * No React state updates or layout reads are performed for every card on scroll.
+/** The landing hero, drawn from the approved sketch.
+ *
+ * The clip fills the screen and the words ride in a cream card laid over it.
+ * One custom property, --vc-p (0 → 1), is written from inside a rAF: the card
+ * fades out and lifts as the guest scrolls, which leaves the clip on its own
+ * before the cream part of the page rises over it (that part is the sticky
+ * hero holding still while the next section carries a gap as its margin-top).
+ * With JavaScript off, or with reduced motion, the card simply stays put.
  */
-function useArchScroll(
-  runwayRef: RefObject<HTMLDivElement | null>,
+function useHeroCardFade(heroRef: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const hero = heroRef.current;
+    if (!hero) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const clamp = (n: number) => Math.max(0, Math.min(1, n));
+    let raf = 0;
+
+    const paint = () => {
+      raf = 0;
+      // The card is gone by the time the guest has scrolled just under half a
+      // screen, which leaves the rest of the pin showing the clip alone.
+      const span = Math.max(1, window.innerHeight * 0.42);
+      const progress = clamp(window.scrollY / span);
+      hero.style.setProperty("--vc-p", progress.toFixed(4));
+      hero.classList.toggle("vc-cleared", progress > 0.999);
+    };
+    const request = () => {
+      if (!raf) raf = window.requestAnimationFrame(paint);
+    };
+
+    let running = false;
+    const stop = () => {
+      if (!running) return;
+      running = false;
+      window.removeEventListener("scroll", request);
+      window.removeEventListener("resize", request);
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+      hero.classList.remove("vc-cleared");
+      hero.style.removeProperty("--vc-p");
+    };
+    const start = () => {
+      stop();
+      if (reduced.matches) return;
+      running = true;
+      paint();
+      window.addEventListener("scroll", request, { passive: true });
+      window.addEventListener("resize", request);
+    };
+
+    start();
+    const onChange = () => start();
+    reduced.addEventListener("change", onChange);
+    return () => {
+      reduced.removeEventListener("change", onChange);
+      stop();
+    };
+  }, [heroRef]);
+}
+
+/** Keeps the header link of the section in view marked as current. */
+function useSectionSpy(
+  pageKey: string,
   onSectionChange: (id: RestaurantSection) => void,
 ) {
   useEffect(() => {
-    const runway = runwayRef.current;
-    if (!runway) return;
-    const stage = runway.querySelector<HTMLElement>(".scroll-stage")!;
-    const frame = runway.querySelector<HTMLElement>(".motion-frame")!;
-    const photo = frame.querySelector<HTMLImageElement>("img")!;
-    const wash = runway.querySelector<HTMLElement>(".motion-whitewash")!;
-    const hero = runway.querySelector<HTMLElement>("#home")!;
-    const kitchen = runway.querySelector<HTMLElement>("#kitchen")!;
-    const story = runway.querySelector<HTMLElement>("#story")!;
-    const target = runway.querySelector<HTMLElement>(".story-photo")!;
-    const note = runway.querySelector<HTMLElement>(".motion-note")!;
-    const caption = runway.querySelector<HTMLElement>(".motion-caption")!;
-    const shell = runway.closest<HTMLElement>(".app-shell");
-    const pieces = Array.from(
-      kitchen.querySelectorAll<HTMLElement>(".motion-reveal"),
+    if (typeof IntersectionObserver === "undefined") return;
+    const targets = SECTION_IDS.map((id) => document.getElementById(id)).filter(
+      (el): el is HTMLElement => Boolean(el),
     );
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const clamp = (n: number) => Math.max(0, Math.min(1, n));
-    const mix = (a: number, b: number, t: number) => a + (b - a) * t;
-    const smooth = (a: number, b: number, p: number) => {
-      const t = clamp((p - a) / (b - a));
-      return t * t * (3 - 2 * t);
-    };
-    type Rect = { x: number; y: number; w: number; h: number };
-    let stop = () => {};
-
-    const apply = () => {
-      stop();
-      if (reduced.matches || typeof ResizeObserver !== "function") {
-        // Reduced-motion / unsupported browsers keep all three sections visible.
-        if (!("IntersectionObserver" in window)) return;
-        const observer = new IntersectionObserver(
-          (entries) => {
-            for (const entry of entries)
-              if (entry.isIntersecting && isRestaurantSection(entry.target.id))
-                onSectionChange(entry.target.id);
-          },
-          { rootMargin: "-25% 0px -45% 0px" },
-        );
-        [hero, kitchen, story].forEach((el) => observer.observe(el));
-        stop = () => observer.disconnect();
-        return;
-      }
-      let raf = 0;
-      let first: Rect = { x: 0, y: 0, w: 0, h: 0 };
-      let last = first;
-      let full = first;
-      let runwayTop = 0;
-      let distance = 1;
-      let active: RestaurantSection | null = null;
-      let disposed = false;
-      const place = (
-        el: HTMLElement,
-        box: Rect,
-        radius: number,
-        bottom: number,
-      ) => {
-        el.style.left = `${box.x}px`;
-        el.style.top = `${box.y}px`;
-        el.style.width = `${box.w}px`;
-        el.style.height = `${box.h}px`;
-        el.style.borderRadius = `${radius}px ${radius}px ${bottom}px ${bottom}px`;
-      };
-      const layer = (el: HTMLElement, opacity: number) => {
-        el.style.opacity = String(opacity);
-        const hidden = opacity < 0.025;
-        el.inert = hidden;
-        el.setAttribute("aria-hidden", String(hidden));
-      };
-      const update = () => {
-        raf = 0;
-        if (disposed) return;
-        const p = clamp((window.scrollY - runwayTop) / distance);
-        const expand = smooth(0.035, 0.34, p),
-          shrink = smooth(0.64, 0.92, p);
-        const a = p < 0.64 ? first : full,
-          b = p < 0.64 ? full : last,
-          t = p < 0.64 ? expand : shrink;
-        const rect = {
-          x: mix(a.x, b.x, t),
-          y: mix(a.y, b.y, t),
-          w: mix(a.w, b.w, t),
-          h: mix(a.h, b.h, t),
-        };
-        const firstRadius = Math.min(first.w / 2, first.h / 2),
-          lastRadius = Math.min(last.w / 2, last.h / 2);
-        const radius =
-          p < 0.64 ? mix(firstRadius, 0, expand) : mix(0, lastRadius, shrink);
-        place(
-          frame,
-          rect,
-          radius,
-          p < 0.64 ? mix(6, 0, expand) : mix(0, 7, shrink),
-        );
-        photo.style.transform = `scale(${mix(1, 1.045, expand * (1 - shrink))})`;
-        const heroAlpha = 1 - smooth(0.04, 0.19, p);
-        const foodAlpha = smooth(0.41, 0.5, p) * (1 - smooth(0.62, 0.71, p));
-        const storyAlpha = smooth(0.72, 0.88, p);
-        layer(hero, heroAlpha);
-        layer(kitchen, foodAlpha);
-        layer(story, storyAlpha);
-        wash.style.opacity = String(
-          0.967 * smooth(0.35, 0.45, p) * (1 - smooth(0.69, 0.89, p)),
-        );
-        pieces.forEach((el, i) => {
-          const reveal = smooth(0.415 + i * 0.016, 0.49 + i * 0.016, p);
-          el.style.opacity = String(reveal);
-          el.style.transform = `translateY(${22 * (1 - reveal)}px)`;
-        });
-        note.style.opacity = String(heroAlpha);
-        caption.style.opacity = String(heroAlpha);
-        shell?.classList.toggle(
-          "nav-over-photo",
-          expand * (1 - shrink) * (1 - smooth(0.35, 0.44, p)) > 0.7,
-        );
-        runway.dataset.motionProgress = p.toFixed(4);
-        const section = p < 0.35 ? "home" : p < 0.72 ? "kitchen" : "story";
-        if (section !== active) {
-          active = section;
-          onSectionChange(section);
+    if (!targets.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting && isRestaurantSection(entry.target.id))
+            onSectionChange(entry.target.id);
         }
-      };
-      const measure = () => {
-        if (disposed) return;
-        const w = stage.clientWidth,
-          h = stage.clientHeight,
-          mobile = w < 768;
-        if (mobile)
-          first = {
-            x: w * 0.16,
-            y: h * (h < 740 ? 0.495 : 0.49),
-            w: w * 0.78,
-            h: h * (h < 740 ? 0.365 : 0.4),
-          };
-        else {
-          const width = Math.min(w * 0.425, 650),
-            height = Math.min(h - 235, 700);
-          first = {
-            x: w - w * 0.047 - width,
-            y: 108 + (h - 178 - height) / 2,
-            w: width,
-            h: height,
-          };
-        }
-        const stageRect = stage.getBoundingClientRect(),
-          end = target.getBoundingClientRect();
-        last = {
-          x: end.left - stageRect.left,
-          y: end.top - stageRect.top,
-          w: end.width,
-          h: end.height,
-        };
-        target.style.borderRadius = `${Math.min(last.w / 2, last.h / 2)}px ${Math.min(last.w / 2, last.h / 2)}px 7px 7px`;
-        full = { x: 0, y: 0, w, h };
-        runwayTop = runway.getBoundingClientRect().top + window.scrollY;
-        distance = Math.max(1, runway.offsetHeight - h);
-        note.style.left = `${first.x - (mobile ? 19 : 34)}px`;
-        note.style.top = `${first.y + first.h - (mobile ? 90 : 122)}px`;
-        caption.style.left = `${first.x}px`;
-        caption.style.top = `${first.y + first.h + 12}px`;
-        caption.style.width = `${first.w}px`;
-        update();
-      };
-      const requestUpdate = () => {
-        if (!raf) raf = window.requestAnimationFrame(update);
-      };
-      const onHash = () => {
-        const id = window.location.hash.slice(1);
-        if (isRestaurantSection(id)) navigateSection(id, "instant");
-      };
-      runway.classList.add("motion-ready");
-      measure();
-      window.addEventListener("scroll", requestUpdate, { passive: true });
-      window.addEventListener("resize", measure);
-      window.addEventListener("hashchange", onHash);
-      const observer = new ResizeObserver(measure);
-      observer.observe(stage);
-      observer.observe(target);
-      const initialHashFrame = window.requestAnimationFrame(onHash);
-      stop = () => {
-        disposed = true;
-        cancelAnimationFrame(raf);
-        cancelAnimationFrame(initialHashFrame);
-        observer.disconnect();
-        window.removeEventListener("scroll", requestUpdate);
-        window.removeEventListener("resize", measure);
-        window.removeEventListener("hashchange", onHash);
-        runway.classList.remove("motion-ready");
-        shell?.classList.remove("nav-over-photo");
-        [hero, kitchen, story].forEach((el) => {
-          el.style.removeProperty("opacity");
-          el.inert = false;
-          el.removeAttribute("aria-hidden");
-        });
-        pieces.forEach((el) => {
-          el.style.removeProperty("opacity");
-          el.style.removeProperty("transform");
-        });
-        target.style.removeProperty("border-radius");
-        delete runway.dataset.motionProgress;
-      };
-    };
-    apply();
-    reduced.addEventListener("change", apply);
-    return () => {
-      stop();
-      reduced.removeEventListener("change", apply);
-    };
-  }, [runwayRef, onSectionChange]);
+      },
+      { rootMargin: "-42% 0px -52% 0px", threshold: 0 },
+    );
+    targets.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [pageKey, onSectionChange]);
 }
 
 type Position = { x: number; y: number; sw: number; sh: number };
@@ -1419,6 +1280,7 @@ export default function App({ storyPage = false, menuPage = false, contactPage =
   const [modal, setModal] = useState<Modal>(null);
   const [footerInfo, setFooterInfo] =
     useState<keyof typeof FOOTER_INFO>("photos");
+  const homePage = !storyPage && !menuPage && !contactPage;
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState(
     menuPage ? "menu" : storyPage ? "story" : "home",
@@ -1432,8 +1294,16 @@ export default function App({ storyPage = false, menuPage = false, contactPage =
   const closeModal = useCallback(() => setModal(null), []);
   const menuPanelRef = useRef<HTMLDivElement>(null);
   const menuToggleRef = useRef<HTMLButtonElement>(null);
-  const runwayRef = useRef<HTMLDivElement>(null);
-  useArchScroll(runwayRef, setActiveSection);
+  const heroRef = useRef<HTMLElement>(null);
+  const pageKey = contactPage
+    ? "contact"
+    : menuPage
+      ? "menu"
+      : storyPage
+        ? "story"
+        : "home";
+  useHeroCardFade(heroRef);
+  useSectionSpy(pageKey, setActiveSection);
   const mosaicRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const maskPositions = useMaskPositions(mosaicRef, cardRefs);
@@ -1461,11 +1331,17 @@ export default function App({ storyPage = false, menuPage = false, contactPage =
     };
   }, [mobileMenu, modal]);
   useEffect(() => {
-    const update = () => setScrolled(window.scrollY > 20);
+    const update = () => {
+      setScrolled(window.scrollY > 20);
+      // The hero stays pinned behind the next section, so it never stops
+      // intersecting — on the way back up nothing would re-light "Home".
+      if (homePage && window.scrollY < 40)
+        setActiveSection((current) => (current === "home" ? current : "home"));
+    };
     update();
     window.addEventListener("scroll", update, { passive: true });
     return () => window.removeEventListener("scroll", update);
-  }, []);
+  }, [homePage]);
   useEffect(() => {
     const query = window.matchMedia("(max-width: 767px)");
     const closeOnDesktop = () => {
@@ -1508,7 +1384,6 @@ export default function App({ storyPage = false, menuPage = false, contactPage =
     { label: "Home", id: "home" },
     { label: "Our story", id: "story" },
   ] as const;
-  const homePage = !storyPage && !menuPage && !contactPage;
   const sectionHref = (id: RestaurantSection) => {
     if (id === "story") return "/our-story";
     // Only the homepage can scroll to a section. Everywhere else — the menu,
@@ -1543,7 +1418,9 @@ export default function App({ storyPage = false, menuPage = false, contactPage =
       </div>
     );
   return (
-    <div className={`app-shell${storyPage ? " story-page-shell" : ""}${menuPage ? " menu-page-shell" : ""}`}>
+    <div
+      className={`app-shell${storyPage ? " story-page-shell" : ""}${menuPage ? " menu-page-shell" : ""}${homePage ? " video-hero-page" : ""}`}
+    >
       <MotionBoot />
       <OrderPill />
       <SignInFab stacked />
@@ -1679,115 +1556,75 @@ export default function App({ storyPage = false, menuPage = false, contactPage =
           />
         ) : (
           <>
-            <div className="arch-scroll" ref={runwayRef}>
-              <div className="scroll-stage">
-                <div className="motion-frame" aria-hidden="true">
-                  <Image
-                    width={1376}
-                    height={768}
-                    sizes="100vw"
-                    src={IMAGE.restaurant}
-                    alt=""
-                    loading="eager"
-                    fetchPriority="high"
-                  />
-                  <div className="motion-whitewash" />
-                </div>
-                <div className="motion-note" aria-hidden="true">
-                  <span className="note-sun">☼</span>
-                  <span>
-                    Come hungry.
-                    <br />
-                    <em>Leave happy.</em>
-                  </span>
-                </div>
-                <div className="motion-caption" aria-hidden="true">
-                  <span>A SPACE TO SLOW DOWN</span>
-                  <span>AND STAY A LITTLE LONGER ↗</span>
-                </div>
+            <div className="vc-stage">
+            <section id="home" ref={heroRef} className="hero-section vc-hero">
+              <div className="vc-media">
+                <Image
+                  fill
+                  sizes="100vw"
+                  className="vc-still"
+                  src={IMAGE.restaurant}
+                  alt="A sunlit restaurant in Mirissa with oak tables, olive-green seating and soft linen curtains"
+                  loading="eager"
+                  fetchPriority="high"
+                />
+                <HeroClip
+                  className="vc-clip"
+                  src="/hero.mp4"
+                  poster={IMAGE.restaurant}
+                />
+                <div className="vc-veil" aria-hidden="true" />
+              </div>
 
-                <section id="home" className="hero-section motion-layer">
-                  <div className="hero-copy">
-                    <div className="eyebrow flex items-center gap-3">
-                      <span className="tiny-line" /> A little pause. A lovely
-                      meal.
-                    </div>
-                    <h1>
-                      Your kind
-                      <br />
-                      of <em>place.</em>
-                      <span className="heading-period"> ✳</span>
-                    </h1>
-                    <p className="hero-description">
-                      Pull up a chair. Settle into something delicious.
-                      <br className="hidden md:block" /> At Mila Mirissa, there’s
-                      always room for good food
-                      <br className="hidden md:block" /> and even better
-                      company.
-                    </p>
-                    <div className="hero-actions">
-                      <button
-                        className="button button-dark"
-                        onClick={() => open("booking")}
-                      >
-                        Find your table <Arrow />
-                      </button>
-                      <button className="text-link" onClick={() => openMenu()}>
-                        Explore the menu <span className="long-arrow">⟶</span>
-                      </button>
-                    </div>
-                    <div className="hero-footnote">
-                      <div className="little-seal">
-                        <Sprig />
-                      </div>
-                      <div>
-                        <strong>Fresh food. Warm welcomes.</strong>
-                        <span>The simple things, done with care.</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="hero-visual">
-                    <div className="arch-image">
-                      <Image
-                        width={1376}
-                        height={768}
-                        sizes="(max-width: 767px) 100vw, 50vw"
-                        src={IMAGE.restaurant}
-                        alt="A sunlit restaurant with oak tables, olive-green seating and soft linen curtains"
-                        loading="eager"
-                        fetchPriority="high"
-                      />
-                    </div>
-                    <div className="image-caption">
-                      <span>A SPACE TO SLOW DOWN</span>
-                      <span>AND STAY A LITTLE LONGER ↗</span>
-                    </div>
-                    <div className="floating-note">
-                      <span className="note-sun">☼</span>
-                      <span>
-                        Come hungry.
-                        <br />
-                        <em>Leave happy.</em>
-                      </span>
-                    </div>
-                  </div>
-                  <Link
-                    className="scroll-hint"
-                    href="#kitchen"
-                    onClick={(event) => {
-                      if (navigateSection("kitchen")) event.preventDefault();
-                    }}
+              <div className="vc-card">
+                <div className="eyebrow flex items-center gap-3">
+                  <span className="tiny-line" /> A little pause. A lovely meal.
+                </div>
+                <h1>
+                  Your kind
+                  <br />
+                  of <em>place.</em>
+                  <span className="heading-period"> ✳</span>
+                </h1>
+                <p className="hero-description">
+                  Pull up a chair. Settle into something delicious. At Mila
+                  Mirissa, there’s always room for good food and even better
+                  company.
+                </p>
+                <div className="hero-actions">
+                  <button
+                    className="button button-dark"
+                    onClick={() => open("booking")}
                   >
-                    <span>FRESH FOOD</span>
-                    <i /> <span>WARM WELCOMES</span>
-                    <i />
-                    <span>SIMPLE JOYS</span>
-                    <span className="scroll-arrow">↓</span>
-                  </Link>
-                </section>
+                    Find your table <Arrow />
+                  </button>
+                  <button className="text-link" onClick={() => openMenu()}>
+                    Explore the menu <span className="long-arrow">⟶</span>
+                  </button>
+                </div>
+                <div className="vc-meta">
+                  <span>Mirissa · Sri Lanka</span>
+                  <span>Kitchen &amp; Good Company</span>
+                </div>
+              </div>
+
+              <Link
+                className="scroll-hint vc-hint"
+                href="#kitchen"
+                onClick={(event) => {
+                  if (navigateSection("kitchen")) event.preventDefault();
+                }}
+              >
+                <span>FRESH FOOD</span>
+                <i /> <span>WARM WELCOMES</span>
+                <i />
+                <span>SIMPLE JOYS</span>
+                <span className="scroll-arrow">↓</span>
+              </Link>
+            </section>
                 <section
                   id="kitchen"
-                  className="kitchen-section section-padding motion-layer"
+                  className="kitchen-section section-padding vc-next"
                 >
                   <div className="kitchen-intro motion-reveal">
                     <div>
@@ -1891,9 +1728,10 @@ export default function App({ storyPage = false, menuPage = false, contactPage =
                     <Sprig />
                   </div>
                 </section>
+            </div>
                 <section
                   id="story"
-                  className="story-section section-padding motion-layer"
+                  className="story-section section-padding"
                 >
                   <div className="story-layout">
                     <div className="story-left">
@@ -2007,8 +1845,6 @@ export default function App({ storyPage = false, menuPage = false, contactPage =
                     </div>
                   </div>
                 </section>
-              </div>
-            </div>
           </>
         )}
         <footer
