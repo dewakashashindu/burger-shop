@@ -83,10 +83,10 @@
   .vc-card {
     animation: msFadeIn 0.7s var(--ms-ease) backwards;
   }
-  .vc-card > .eyebrow {
+  .vc-card .eyebrow {
     animation: msRise 0.58s var(--ms-ease) 0.1s both;
   }
-  .vc-card > h1 {
+  .vc-card h1 {
     animation: msRise 0.78s var(--ms-ease) 0.16s both;
   }
   .vc-card .hero-description {
@@ -95,8 +95,11 @@
   .vc-card .hero-actions {
     animation: msRise 0.68s var(--ms-ease) 0.34s both;
   }
-  .vc-card .vc-meta {
+  .vc-card .vc-foot {
     animation: msRise 0.68s var(--ms-ease) 0.42s both;
+  }
+  .vc-card .vc-meta {
+    animation: msRise 0.68s var(--ms-ease) 0.5s both;
   }
 
   /* 2 — blocks that wait for the scroll (class is added by MotionBoot only when
@@ -203,10 +206,11 @@
   .ms-fresh > *,
   .ms-page,
   .vc-card,
-  .vc-card > .eyebrow,
-  .vc-card > h1,
+  .vc-card .eyebrow,
+  .vc-card h1,
   .vc-card .hero-description,
   .vc-card .hero-actions,
+  .vc-card .vc-foot,
   .vc-card .vc-meta,
   .hero-copy > .eyebrow,
   .hero-copy > h1,

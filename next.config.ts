@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
     const noStore = [
       { key: "Cache-Control", value: "no-store, max-age=0, must-revalidate" },
       { key: "Pragma", value: "no-cache" },
-      { key: "X-Mila-Build", value: "video-card-14" },
+      { key: "X-Mila-Build", value: "video-card-15" },
     ];
     const media = [
       {

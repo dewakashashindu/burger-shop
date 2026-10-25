@@ -3,7 +3,7 @@ import { readWebOrderInput, saveWebOrder } from "@/lib/web-order";
 
 /**
  * POST /api/order/confirm
- * The only write endpoint on this website: cart → dbo.Tbl_holdUpsCloudTempWeb.
+ * The only write endpoint on this website: cart → dbo.Tbl_holdUpsCloudTempOO.
  *
  * Prices, availability, the invoice number and the order numbers all come from
  * the database — the browser only says which dishes and how many.

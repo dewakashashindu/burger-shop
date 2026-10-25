@@ -1577,30 +1577,47 @@ export default function App({ storyPage = false, menuPage = false, contactPage =
               </div>
 
               <div className="vc-card">
-                <div className="eyebrow flex items-center gap-3">
-                  <span className="tiny-line" /> A little pause. A lovely meal.
+                <div className="vc-main">
+                  <div className="eyebrow flex items-center gap-3">
+                    <span className="tiny-line" /> A little pause. A lovely meal.
+                  </div>
+                  <h1>
+                    Your kind
+                    <br />
+                    of <em>place.</em>
+                    <span className="heading-period"> ✳</span>
+                  </h1>
+                  <p className="hero-description">
+                    Pull up a chair. Settle into something delicious. At Mila
+                    Mirissa, there’s always room for good food and even better
+                    company.
+                  </p>
+                  <div className="hero-actions">
+                    <button
+                      className="button button-dark"
+                      onClick={() => open("booking")}
+                    >
+                      Find your table <Arrow />
+                    </button>
+                    <button className="text-link" onClick={() => openMenu()}>
+                      Explore the menu <span className="long-arrow">⟶</span>
+                    </button>
+                  </div>
                 </div>
-                <h1>
-                  Your kind
-                  <br />
-                  of <em>place.</em>
-                  <span className="heading-period"> ✳</span>
-                </h1>
-                <p className="hero-description">
-                  Pull up a chair. Settle into something delicious. At Mila
-                  Mirissa, there’s always room for good food and even better
-                  company.
-                </p>
-                <div className="hero-actions">
-                  <button
-                    className="button button-dark"
-                    onClick={() => open("booking")}
-                  >
-                    Find your table <Arrow />
-                  </button>
-                  <button className="text-link" onClick={() => openMenu()}>
-                    Explore the menu <span className="long-arrow">⟶</span>
-                  </button>
+                <div className="vc-rule" />
+                <div className="vc-foot">
+                  <span className="vc-seal" aria-hidden="true">
+                    <svg viewBox="0 0 24 28" fill="none" stroke="currentColor" strokeWidth="1.1">
+                      <path d="M12 26V6" />
+                      <path d="M12 12c-4 0-6-3-6-6 4 0 6 3 6 6z" />
+                      <path d="M12 17c4 0 6-3 6-6-4 0-6 3-6 6z" />
+                      <path d="M12 22c-3 0-5-2-5-5 3 0 5 2 5 5z" />
+                    </svg>
+                  </span>
+                  <span className="vc-foot__copy">
+                    <strong>Fresh food. Warm welcomes.</strong>
+                    <span>The simple things, done with care.</span>
+                  </span>
                 </div>
                 <div className="vc-meta">
                   <span>Mirissa · Sri Lanka</span>

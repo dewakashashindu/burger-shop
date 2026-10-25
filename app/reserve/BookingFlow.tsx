@@ -711,7 +711,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     setView("success");
   };
 
-  // The cart is written to dbo.Tbl_holdUpsCloudTempWeb. If the database cannot
+  // The cart is written to dbo.Tbl_holdUpsCloudTempOO. If the database cannot
   // be reached the guest is told plainly — no fake success screen.
   const confirmOrder = async () => {
     const next: Errors = {};

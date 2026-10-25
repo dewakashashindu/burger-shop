@@ -2,7 +2,7 @@
 /**
  * npm run db:order
  *
- * Creates dbo.Tbl_holdUpsCloudTempWeb (if it is missing) and makes sure the
+ * Creates dbo.Tbl_holdUpsCloudTempOO (if it is missing) and makes sure the
  * three counters the website needs exist in dbo.Tbl_Serials:
  *
  *   INV - invoice number       INV-20261024-001 style (existing counter)
@@ -70,55 +70,54 @@ const config = {
 };
 
 const CREATE_TABLE = `
-IF OBJECT_ID('dbo.Tbl_holdUpsCloudTempWeb', 'U') IS NULL
+IF OBJECT_ID('dbo.Tbl_holdUpsCloudTempOO', 'U') IS NULL
 BEGIN
-  CREATE TABLE dbo.Tbl_holdUpsCloudTempWeb
+  CREATE TABLE dbo.Tbl_holdUpsCloudTempOO
   (
-      LocCode        char(10)      NOT NULL,
-      TabelNo        char(10)      NOT NULL,
-      OrderNo        char(10)      NOT NULL,
-      UserID         char(10)      NOT NULL,
-      UserName       varchar(50)   NOT NULL,
-      AOR            char(1)       NOT NULL,
-      ItemCode       char(10)      NOT NULL,
-      QTY            float         NOT NULL,
-      ItemRemarks    varchar(500)  NULL,
-      TabelGrpID     char(10)      NULL,
-      TxnDateTime    datetime      NOT NULL,
-      LPax           float         NOT NULL,
-      FPax           float         NOT NULL,
-      MgrID          char(10)      NULL,
-      OrderType      varchar(5)    NOT NULL,
-      SalesPrice     float         NOT NULL,
-      VoidRemark     varchar(200)  NULL,
-      InvoiceNo      varchar(50)   NOT NULL,
-      IsPaid         bit           NOT NULL DEFAULT 0,
-      CusName        varchar(200)  NULL,
-      CusCode        char(10)      NULL,
-      RowLine        float         NOT NULL,
-      RowId          bigint IDENTITY(1,1) NOT NULL,
-      ScheduleDate   date          NOT NULL,
-      ScheduleTime   time(0)       NOT NULL,
-      ScheduleDateTime AS (CAST(ScheduleDate AS datetime) + CAST(ScheduleTime AS datetime)) PERSISTED,
-      CusPhone       varchar(20)   NOT NULL,
-      CusAddress     varchar(300)  NULL,
-      CusLoc         varchar(100)  NULL,
-      DeliveryFee    float         NOT NULL DEFAULT 0,
-      OrderNote      varchar(500)  NULL,
-      CONSTRAINT PK_HoldUpsCloudTempWeb PRIMARY KEY CLUSTERED (RowId)
+      LocCode           char(10)      NOT NULL,
+      TabelNo           char(10)      NOT NULL,
+      OrderNo           char(10)      NOT NULL,
+      UserID            char(10)      NOT NULL,
+      UserName          varchar(50)   NOT NULL,
+      AOR               char(1)       NOT NULL,
+      ItemCode          char(10)      NOT NULL,
+      QTY               float         NOT NULL,
+      ItemRemarks       varchar(500)  NULL,
+      TabelGrpID        char(10)      NULL,
+      TxnDateTime       datetime      NOT NULL,
+      LPax              float         NOT NULL,
+      FPax              float         NOT NULL,
+      MgrID             char(10)      NULL,
+      OrderType         varchar(5)    NOT NULL,
+      SalesPrice        float         NOT NULL,
+      VoidRemark        varchar(200)  NULL,
+      InvoiceNo         varchar(50)   NOT NULL,
+      IsPaid            bit           NOT NULL DEFAULT 0,
+      CusName           varchar(200)  NULL,
+      CusCode           char(10)      NULL,
+      RowLine           float         NOT NULL,
+      ScheduleDate      date          NOT NULL,
+      ScheduleTime      time(7)       NOT NULL,
+      ScheduleDateTime  datetime      NULL,
+      CusPhone          varchar(20)   NOT NULL,
+      CusAddress        varchar(300)  NULL,
+      CusLoc            varchar(100)  NULL,
+      DeliveryFee       float         NOT NULL DEFAULT 0,
+      OrderNote         varchar(500)  NULL,
+      CONSTRAINT PK_HoldUpsCloudTempOO PRIMARY KEY CLUSTERED (RowLine)
   )
 END`;
 
 const CREATE_INDEXES = [
-  `IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_HoldUpsCloudTempWeb_Order')
-     CREATE INDEX IX_HoldUpsCloudTempWeb_Order
-       ON dbo.Tbl_holdUpsCloudTempWeb (InvoiceNo, TabelNo, RowLine)`,
-  `IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_HoldUpsCloudTempWeb_Schedule')
-     CREATE INDEX IX_HoldUpsCloudTempWeb_Schedule
-       ON dbo.Tbl_holdUpsCloudTempWeb (ScheduleDate, ScheduleTime, IsPaid)`,
-  `IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_HoldUpsCloudTempWeb_Bill')
-     CREATE INDEX IX_HoldUpsCloudTempWeb_Bill
-       ON dbo.Tbl_holdUpsCloudTempWeb (InvoiceNo, IsPaid)`,
+  `IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_HoldUpsCloudTempOO_Order')
+     CREATE INDEX IX_HoldUpsCloudTempOO_Order
+       ON dbo.Tbl_holdUpsCloudTempOO (InvoiceNo, TabelNo, RowLine)`,
+  `IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_HoldUpsCloudTempOO_Schedule')
+     CREATE INDEX IX_HoldUpsCloudTempOO_Schedule
+       ON dbo.Tbl_holdUpsCloudTempOO (ScheduleDate, ScheduleTime, IsPaid)`,
+  `IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_HoldUpsCloudTempOO_Bill')
+     CREATE INDEX IX_HoldUpsCloudTempOO_Bill
+       ON dbo.Tbl_holdUpsCloudTempOO (InvoiceNo, IsPaid)`,
 ];
 
 // dbo.Tbl_Serials is the same table the POS / QR orders use. Its optional
@@ -176,8 +175,8 @@ try {
   await pool.request().query(CREATE_TABLE);
   const existed = await pool
     .request()
-    .query("SELECT COUNT(*) AS n FROM dbo.Tbl_holdUpsCloudTempWeb");
-  console.log(`  ✓ dbo.Tbl_holdUpsCloudTempWeb ready (${existed.recordset[0].n} existing row(s))`);
+    .query("SELECT COUNT(*) AS n FROM dbo.Tbl_holdUpsCloudTempOO");
+  console.log(`  ✓ dbo.Tbl_holdUpsCloudTempOO ready (${existed.recordset[0].n} existing row(s))`);
 
   for (const statement of CREATE_INDEXES) await pool.request().query(statement);
   console.log("  ✓ indexes checked");
@@ -204,7 +203,7 @@ try {
   }
 
   const columns = await pool.request().query(
-    "SELECT COUNT(*) AS n FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Tbl_holdUpsCloudTempWeb')",
+    "SELECT COUNT(*) AS n FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Tbl_holdUpsCloudTempOO')",
   );
   console.log(`\n✔ Done — the web order table has ${columns.recordset[0].n} columns.`);
   console.log("  Try an order in the site; it should now save and show DL-0001 / PU-0001.");

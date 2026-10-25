@@ -4,13 +4,16 @@ import { readMenuItems, type MenuItem } from "./menu-source";
 /**
  * The ONLY place this website writes to the restaurant database.
  *
- * Cart → confirm → dbo.Tbl_holdUpsCloudTempWeb (one row per dish).
+ * Cart → confirm → dbo.Tbl_holdUpsCloudTempOO (one row per dish, 30 columns).
  * Nothing else is written: Tbl_HoldUpsCloud, Tbl_HoldUpsCloudTemp and the QR
- * table stay untouched. Tbl_Serials is only incremented for the three numbers
- * the note asks for (INV, ODN, DL / PU).
+ * table stay untouched. Tbl_Serials is only incremented for the numbers the
+ * note asks for (INV, ODN, DL / PU).
+ *
+ * The table can be pointed somewhere else with WEB_ORDER_TABLE in .env.
  */
 
-export const WEB_ORDER_TABLE = "dbo.Tbl_holdUpsCloudTempWeb";
+export const WEB_ORDER_TABLE =
+  process.env.WEB_ORDER_TABLE?.trim() || "dbo.Tbl_holdUpsCloudTempOO";
 const DELIVERY_FEE = 350;
 
 export type WebOrderLine = { itemCode: string; qty: number; remark?: string };
@@ -118,6 +121,21 @@ export function sriLankaDay(now: number = Date.now()) {
 }
 
 /**
+ * A `date` column as `YYYY-MM-DD`.
+ *
+ * mssql hands a `date` back as a JavaScript Date, and `String(date)` is
+ * "Wed Oct 25 2026 …" — not a day anybody can compare. Without this, every
+ * invoice looked like it belonged to a different day and the counter was
+ * reset to 1 on every order (INV-20261025-001, again and again).
+ */
+export function isoDayOf(value: unknown): string {
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  const text = String(value ?? "");
+  const match = text.match(/\d{4}-\d{2}-\d{2}/);
+  return match ? match[0] : "";
+}
+
+/**
  * The next counter value, exactly like the QR order code:
  *  - a prefix in the stored value (`DL-0007`) is ignored, the number is 7
  *  - `daily` + a SeriDate that belongs to another day -> start again at 1
@@ -213,6 +231,34 @@ export async function readSerialsShape(pool: { request(): TxRequest }): Promise<
   return shapeCache;
 }
 
+/**
+ * Which of the optional columns the order table has.
+ *
+ * `ScheduleDateTime` is a real column in Tbl_holdUpsCloudTempOO, but an older
+ * copy of the table had it computed — and SQL Server refuses an INSERT into a
+ * computed column. So it is written only when it exists and is not computed.
+ */
+export type OrderTableShape = { scheduleDateTime: boolean };
+let orderShapeCache: OrderTableShape | null = null;
+
+export async function readOrderShape(
+  pool: { request(): TxRequest },
+): Promise<OrderTableShape> {
+  if (orderShapeCache) return orderShapeCache;
+  const found = await pool
+    .request()
+    .query<{ name: string; computed: boolean | number }>(
+      `SELECT c.name, c.is_computed AS computed
+         FROM sys.columns c
+        WHERE c.object_id = OBJECT_ID('${WEB_ORDER_TABLE}')`,
+    );
+  const rows = found.recordset ?? [];
+  if (!rows.length) throw new Error(`${WEB_ORDER_TABLE} could not be read`);
+  const hit = rows.find((row) => String(row.name).toLowerCase() === "scheduledatetime");
+  orderShapeCache = { scheduleDateTime: Boolean(hit) && !Boolean(hit?.computed) };
+  return orderShapeCache;
+}
+
 type SerialArgs = {
   code: string;
   locCode?: string;
@@ -239,7 +285,8 @@ export async function takeSerial(tx: Tx, shape: SerialsShape, args: SerialArgs) 
   };
 
   const found = await bind(tx.request()).query<{ SeriNo: unknown; SeriDate?: unknown }>(
-    `SELECT ${shape.date ? "SeriDate, " : ""}SeriNo
+    // CONVERT(…, 23) gives 'YYYY-MM-DD', so the day never arrives as a Date object.
+    `SELECT ${shape.date ? "CONVERT(char(10), SeriDate, 23) AS SeriDate, " : ""}SeriNo
        FROM dbo.Tbl_Serials WITH (UPDLOCK, HOLDLOCK)
       WHERE ${where}`,
   );
@@ -271,7 +318,7 @@ export async function takeSerial(tx: Tx, shape: SerialsShape, args: SerialArgs) 
 
   const priorRaw = row.SeriNo;
   const priorText = String(priorRaw ?? "");
-  const priorDate = row.SeriDate ? String(row.SeriDate).slice(0, 10) : "";
+  const priorDate = isoDayOf(row.SeriDate);
   const number = nextCounter(priorRaw, priorDate, today.iso, Boolean(args.daily));
 
   const label = args.format
@@ -299,7 +346,7 @@ export async function takeSerial(tx: Tx, shape: SerialsShape, args: SerialArgs) 
 }
 
 /**
- * Writes the cart to dbo.Tbl_holdUpsCloudTempWeb.
+ * Writes the cart to dbo.Tbl_holdUpsCloudTempOO.
  * Prices always come from the menu view, never from the browser.
  */
 export async function saveWebOrder(
@@ -350,12 +397,23 @@ export async function saveWebOrder(
 
   const pool = (await getPool()) as unknown as { transaction(): Tx; request(): TxRequest };
 
-  // Which optional columns Tbl_Serials has — read once, outside the transaction.
+  // Which optional columns the two tables have — read once, outside the transaction.
   let shape: SerialsShape;
+  let orderShape: OrderTableShape;
   try {
     shape = await readSerialsShape(pool);
+    orderShape = await readOrderShape(pool);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    if (/could not be read/i.test(message)) {
+      return {
+        ok: false,
+        error: {
+          kind: "table-missing",
+          message: `${WEB_ORDER_TABLE} does not exist yet. Run: npm run db:order`,
+        },
+      };
+    }
     return { ok: false, error: { kind: "database", message } };
   }
 
@@ -371,15 +429,6 @@ export async function saveWebOrder(
     //    same rules as the QR order code.
     const today = sriLankaDay();
 
-    //    InvoiceNo: INV-20261024-001, resets on a new day when SeriDate exists.
-    const invoice = await takeSerial(tx, shape, {
-      code: "INV",
-      locCode: place.code,
-      daily: true,
-      format: (counter) => composeInvoice(counter, today.compact),
-    });
-    const invoiceNo = invoice.label;
-
     //    OrderNo: a plain number, a fresh one for every confirm.
     const orderNo = String(
       (await takeSerial(tx, shape, { code: "ODN", locCode: place.code })).number,
@@ -390,6 +439,33 @@ export async function saveWebOrder(
     const tabelNo = (
       await takeSerial(tx, shape, { code: tabelCode, locCode: place.code, badge: tabelCode })
     ).label;
+
+    //    InvoiceNo: INV-20261025-001 — resets on a new day when SeriDate exists.
+    //
+    //    One bill, one invoice number: if the counter hands back a number that
+    //    another order already owns (a wiped 'INV' row, a restored backup), take
+    //    the next one instead of writing a second bill under the same number.
+    const takeInvoice = () =>
+      takeSerial(tx, shape, {
+        code: "INV",
+        locCode: place.code,
+        daily: true,
+        format: (counter) => composeInvoice(counter, today.compact),
+      });
+    let invoice = await takeInvoice();
+    for (let tries = 0; tries < 10; tries += 1) {
+      const used = await tx
+        .request()
+        .input("invoiceNo", TEXT(invoice.label, 50))
+        .input("tabelNo", TEXT(tabelNo, 10))
+        .query<{ n: number }>(
+          `SELECT COUNT(*) AS n FROM ${WEB_ORDER_TABLE} WITH (TABLOCKX, HOLDLOCK)
+            WHERE InvoiceNo = @invoiceNo AND TabelNo <> @tabelNo`,
+        );
+      if (Number(used.recordset?.[0]?.n ?? 0) === 0) break;
+      invoice = await takeInvoice();
+    }
+    const invoiceNo = invoice.label;
 
     // 3. The next RowLine in the web table (POS reads/deletes these rows itself).
     const maxRow = await tx
@@ -402,38 +478,48 @@ export async function saveWebOrder(
     // 4. One row per dish.
     for (const line of priced) {
       rowLine += 1;
-      await tx
+      const request = tx
         .request()
-        .input("locCode", place.code)
-        .input("tabelNo", tabelNo)
-        .input("orderNo", orderNo)
-        .input("itemCode", line.itemCode)
+        .input("locCode", place.code.slice(0, 10))
+        .input("tabelNo", TEXT(tabelNo, 10))
+        .input("orderNo", TEXT(orderNo, 10))
+        .input("itemCode", TEXT(line.itemCode, 10))
         .input("qty", line.qty)
-        .input("remark", line.remark ?? "")
-        .input("orderType", order.orderType)
+        .input("remark", TEXT(line.remark, 500))
+        .input("orderType", TEXT(order.orderType, 5))
         .input("salesPrice", line.price)
-        .input("invoiceNo", invoiceNo)
-        .input("cusName", order.customerName)
+        .input("invoiceNo", TEXT(invoiceNo, 50))
+        .input("cusName", TEXT(order.customerName, 200))
         .input("cusCode", "")
         .input("rowLine", rowLine)
         .input("scheduleDate", order.scheduleDate)
         .input("scheduleTime", order.scheduleTime)
-        .input("cusPhone", order.customerPhone)
-        .input("cusAddress", order.customerAddress ?? "")
-        .input("cusLoc", place.name)
+        .input("cusPhone", TEXT(order.customerPhone, 20))
+        .input("cusAddress", TEXT(order.customerAddress, 300))
+        .input("cusLoc", TEXT(place.name, 100))
         .input("deliveryFee", deliveryFee)
-        .input("orderNote", order.orderNote ?? "")
-        .query(`
+        .input("orderNote", TEXT(order.orderNote, 500));
+
+      // ScheduleDateTime is written only when the table keeps it as a plain
+      // column; on a copy where it is computed, SQL Server does it itself.
+      const extraColumn = orderShape.scheduleDateTime ? ", ScheduleDateTime" : "";
+      const extraValue = orderShape.scheduleDateTime
+        ? ", DATEADD(MINUTE, DATEDIFF(MINUTE, 0, CAST(@scheduleTime AS time(7))), CAST(@scheduleDate AS datetime))"
+        : "";
+
+      await request.query(`
           INSERT INTO ${WEB_ORDER_TABLE}
             (LocCode, TabelNo, OrderNo, UserID, UserName, AOR, ItemCode, QTY, ItemRemarks,
              TabelGrpID, TxnDateTime, LPax, FPax, MgrID, OrderType, SalesPrice, VoidRemark,
              InvoiceNo, IsPaid, CusName, CusCode, RowLine,
-             ScheduleDate, ScheduleTime, CusPhone, CusAddress, CusLoc, DeliveryFee, OrderNote)
+             ScheduleDate, ScheduleTime${extraColumn}, CusPhone, CusAddress, CusLoc,
+             DeliveryFee, OrderNote)
           VALUES
             (@locCode, @tabelNo, @orderNo, 'WEB', 'WEB', 'A', @itemCode, @qty, @remark,
              '', DATEADD(MINUTE, 330, GETUTCDATE()), 0, 0, '', @orderType, @salesPrice, '',
              @invoiceNo, 0, @cusName, @cusCode, @rowLine,
-             @scheduleDate, @scheduleTime, @cusPhone, @cusAddress, @cusLoc, @deliveryFee, @orderNote)
+             @scheduleDate, @scheduleTime${extraValue}, @cusPhone, @cusAddress, @cusLoc,
+             @deliveryFee, @orderNote)
         `);
     }
 

@@ -54,6 +54,7 @@ It replaces the Triptych (three drifting panes). `app/triptych.css` and
 | --- | --- | --- |
 | `--vc-p` | `.vc-hero` inline style | 0 → 1 over **42 % of the viewport height** of scroll |
 | card opacity / lift | `.vc-card` | `1 - --vc-p`, `translateY(-30px)`, `scale(0.985)` |
+| card words rise in | `.vc-card .eyebrow / h1 / .hero-description / .hero-actions / .vc-foot / .vc-meta` | `msRise` 0.58–0.78 s, staggered 0.1 → 0.5 s |
 | card visibility | `.vc-cleared` | hidden once `--vc-p > 0.999` |
 | the gap before the cream part | `.vc-next` | `clamp(70px, 46svh, 460px)` |
 | on a phone | `.vc-next` | `16svh` |

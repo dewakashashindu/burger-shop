@@ -1,5 +1,5 @@
 {
-  "version": "v13 — landing hero: full-bleed clip + floating card (approved sketch)",
+  "version": "v14 — landing hero: the card runs to the floor, seal at its foot; logo keeps its artwork",
   "date": "2026-10-25",
   "framework": "Original burger-shop: Next.js 16.4.2 / React 19 / Tailwind CSS 4",
   "status": "PASS",
@@ -7,7 +7,13 @@
     "ESLint pass",
     "TypeScript and production build pass",
     "Production dependency audit: 0 vulnerabilities",
-    "Existing motion/CSS/controller/LAN fingerprints unchanged"
+    "Existing motion/CSS/controller/LAN fingerprints unchanged",
+    "Landing hero: card stretched from 104px to 96px above the floor (522px wide, 18px corners)",
+    "Landing hero: seal + 'Fresh food. Warm welcomes.' keep the foot of the card; meta line closes it",
+    "Landing hero: no content spill at 1440x900 / 1920x1080 / 1280x800 / 1366x768 / 1024x768 / 1440x700 / 768x1024 / 390x844 / 360x740",
+    "Landing hero: phone card untouched (no seal) and still clears the floating pills",
+    "Header: the over-video logo keeps its artwork (invert filter removed) with a hairline cream ring + soft shadow",
+    "Suites: hero-layout 36, hero-video 14, motion 11, entry-flow 28, contact 17, redirect 13, invoice 9 — all pass"
   ],
   "menu": {
     "passed": true,
