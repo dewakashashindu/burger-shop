@@ -36,6 +36,10 @@ const RESTAURANT = {
   // Every number the restaurant answers on, in the order they should be tried.
   phones: ["0772336233", "0771096131"],
 };
+// "0772336233" is hard to read at hero size; the link still dials the
+// number exactly as it is stored.
+const readablePhone = (phone: string) =>
+  phone.replace(/^(\d{3})(\d{3})(\d{4})$/, "$1 $2 $3");
 const IMAGE = {
   restaurant: `/images/restaurant.jpg`,
   table: `/images/table.jpg`,
@@ -1603,6 +1607,33 @@ export default function App({ storyPage = false, menuPage = false, contactPage =
                       Explore the menu <span className="long-arrow">⟶</span>
                     </button>
                   </div>
+
+                  {/* The card runs to the floor of the hero, so on a tall
+                      window the middle of it used to sit empty. It now reads
+                      like the small card at the door. Every line is a fact the
+                      site already states on the reservation page. */}
+                  <dl className="vc-visit">
+                    <div>
+                      <dt>Hours</dt>
+                      <dd>11:00 – 21:30</dd>
+                    </div>
+                    <div>
+                      <dt>Find us</dt>
+                      <dd>Mirissa · Beach Road</dd>
+                    </div>
+                    <div>
+                      <dt>Good for</dt>
+                      <dd>Table · Room · Takeaway</dd>
+                    </div>
+                    <div>
+                      <dt>Call</dt>
+                      <dd>
+                        <a href={`tel:${RESTAURANT.phones[0]}`}>
+                          {readablePhone(RESTAURANT.phones[0])}
+                        </a>
+                      </dd>
+                    </div>
+                  </dl>
                 </div>
                 <div className="vc-rule" />
                 <div className="vc-foot">

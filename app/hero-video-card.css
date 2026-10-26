@@ -179,6 +179,52 @@
 .vc-card .text-link {
   font-size: 10.5px;
 }
+
+/* ---------- the visit: four lines in the middle of the card ---------- */
+/* The card is built to reach the floor of the hero, which left a tall
+   empty middle on a big desktop window. These four lines fill it the
+   way the small card at the door would: what time, where, what for,
+   and the number. Nothing here is new information — it is the same
+   facts the reservation page already lists. */
+.vc-visit {
+  margin: 30px 0 0;
+  border-top: 1px solid rgba(63, 51, 37, 0.14);
+}
+.vc-visit > div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(63, 51, 37, 0.14);
+}
+.vc-visit dt {
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8a6440;
+}
+.vc-visit dd {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #3f3325;
+}
+.vc-visit dd a {
+  color: inherit;
+  text-decoration: none;
+  padding-bottom: 1px;
+  border-bottom: 1px solid rgba(63, 51, 37, 0.3);
+  transition: border-color 0.25s ease;
+}
+.vc-visit dd a:hover {
+  border-bottom-color: #3f3325;
+}
+.vc-visit dd a:focus-visible {
+  outline: 2px solid #8a6440;
+  outline-offset: 3px;
+  border-radius: 2px;
+}
 .vc-meta {
   display: flex;
   justify-content: space-between;
@@ -279,6 +325,17 @@
     flex-wrap: wrap;
     gap: 16px;
   }
+  .vc-visit {
+    margin-top: 24px;
+  }
+  .vc-visit > div {
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 12px;
+    padding: 9px 0;
+  }
+  .vc-visit dd {
+    font-size: 11.5px;
+  }
   .vc-hint.scroll-hint {
     right: calc(4.7vw + 180px);
   }
@@ -299,9 +356,11 @@
     padding: 24px 22px 20px;
     border-radius: 16px;
   }
-  /* a phone has no room to spare: the card hugs its words */
+  /* a phone has no room to spare: the card hugs its words, and the
+     four visit lines (a desktop answer) stay off the small screen */
   .vc-rule,
-  .vc-foot {
+  .vc-foot,
+  .vc-visit {
     display: none;
   }
   .vc-card h1 {
@@ -337,6 +396,53 @@
   }
 }
 
+/* ---------- windows that are tall but not wide ---------- */
+/* The card still reaches the floor, so on a very tall window the four
+   visit lines are given more air instead of leaving a void under them. */
+@media (min-width: 768px) and (min-height: 940px) {
+  .vc-visit > div {
+    padding: 16px 0;
+  }
+}
+@media (min-width: 768px) and (min-height: 1040px) {
+  .vc-visit {
+    margin-top: 34px;
+  }
+  .vc-visit > div {
+    padding: 22px 0;
+  }
+}
+
+/* ---------- a window that is short but wide ---------- */
+/* 1280 x 800 and 1024 x 768 are common laptops: the four lines tighten
+   so the card never has to scroll inside itself. */
+@media (min-width: 768px) and (max-height: 880px) {
+  .vc-visit {
+    margin-top: 22px;
+  }
+  .vc-visit > div {
+    padding: 8px 0;
+  }
+  .vc-visit dd {
+    font-size: 11.5px;
+  }
+}
+
+/* 1366 x 768 and 1440 x 800 are the tight ones: the four lines get
+   closer together rather than the card ever scrolling inside itself. */
+@media (min-width: 768px) and (max-height: 800px) {
+  .vc-visit {
+    margin-top: 14px;
+  }
+  .vc-visit > div {
+    padding: 6px 0;
+  }
+  .vc-visit dd {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+}
+
 /* ---------- short laptops ---------- */
 @media (min-width: 768px) and (max-height: 760px) {
   .vc-card {
@@ -356,6 +462,15 @@
   .vc-card .hero-actions {
     margin-top: 20px;
   }
+  .vc-visit {
+    margin-top: 20px;
+  }
+  .vc-visit > div {
+    padding: 8px 0;
+  }
+  .vc-visit dd {
+    font-size: 11.5px;
+  }
   .vc-meta {
     margin-top: 22px;
     padding-top: 12px;
@@ -370,6 +485,12 @@
   .vc-rule,
   .vc-foot {
     display: none;
+  }
+  .vc-visit {
+    margin-top: 16px;
+  }
+  .vc-visit > div {
+    padding: 6px 0;
   }
   .vc-meta {
     margin-top: 22px;
