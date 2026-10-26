@@ -70,8 +70,13 @@ export async function loadSql(): Promise<SqlModule | null> {
 
   // 1. Plain dynamic import (keeps the bundler out of it).
   try {
-    const specifier = "mssql";
-    const loaded = asModule(await import(/* turbopackIgnore: true */ specifier));
+    // The specifier is a literal on purpose: the build's file tracer reads it
+    // and ships the driver with the server output. With a variable it sees
+    // nothing, and a Netlify function ends up with no mssql at all —
+    // /api/menu/health then answers "driver-missing". The package stays
+    // external (serverExternalPackages), so this is still a runtime require
+    // and is never bundled.
+    const loaded = asModule(await import("mssql"));
     if (loaded) {
       store.__microechefSql = loaded;
       return loaded;

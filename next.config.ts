@@ -63,6 +63,43 @@ const nextConfig: NextConfig = {
   },
   // The SQL driver stays outside the bundle and is loaded at runtime.
   serverExternalPackages: ["mssql"],
+  /**
+   * Ship the SQL driver with the server output.
+   *
+   * `serverExternalPackages` only says "do not bundle mssql" — it does not copy
+   * the package anywhere. The build's file tracer (@vercel/nft) follows real
+   * import/require calls, and lib/db.ts loads the driver through an opaque
+   * require whose name it cannot see, so nothing was traced and the Netlify
+   * function was packaged without the driver at all. That is exactly what
+   * /api/menu/health reported:
+   *
+   *   { "reason": "driver-missing",
+   *     "diagnostics": { "cwd": "/var/task", "nodeModulesMssql": false } }
+   *
+   * These globs put the driver and its whole dependency tree (tedious, tarn and
+   * tedious' own @azure/*, @js-joda, bl, iconv-lite …) into every server
+   * function, so the runtime require finds it. On a normal machine the copy is
+   * harmless duplication of what is already in node_modules.
+   */
+  outputFileTracingIncludes: {
+    "/*": [
+      "./node_modules/mssql/**",
+      "./node_modules/tedious/**",
+      "./node_modules/tarn/**",
+      "./node_modules/@tediousjs/**",
+      "./node_modules/@azure/**",
+      "./node_modules/@js-joda/**",
+      "./node_modules/bl/**",
+      "./node_modules/iconv-lite/**",
+      "./node_modules/js-md4/**",
+      "./node_modules/native-duplexpair/**",
+      "./node_modules/readable-stream/**",
+      "./node_modules/sprintf-js/**",
+      "./node_modules/commander/**",
+      "./node_modules/debug/**",
+      "./node_modules/rfdc/**",
+    ],
+  },
   experimental: {
     agentFeedback: true,
   },
