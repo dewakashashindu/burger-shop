@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { refreshGuest, useGuest } from "./session";
+import { refreshGuest, signOut, useGuest } from "./session";
 
 /**
  * A quiet sign-in chip that stays in the bottom-right corner.
@@ -14,7 +14,9 @@ import { refreshGuest, useGuest } from "./session";
  * [ Sign in ] over [ Order now ]. No password anywhere — a code by text is the
  * whole of the sign-in.
  *
- * Once the tab has signed in it stops asking and simply shows who is here.
+ * Once the tab has signed in it stops asking and simply shows who is here —
+ * with one quiet way out: "Sign out" drops the httpOnly cookie on the server
+ * and the mirror in this browser, in that order.
  */
 export default function SignInFab({ stacked = false }: { stacked?: boolean }) {
   const guest = useGuest();
@@ -35,6 +37,14 @@ export default function SignInFab({ stacked = false }: { stacked?: boolean }) {
           <path d="M5 12.5 9.5 17 19 7.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         {guest.name ? guest.name.split(" ")[0] : "Signed in"}
+        <button
+          type="button"
+          className="signin-fab__out"
+          onClick={() => { void signOut(); }}
+          aria-label={`Sign out${guest.name ? ` of ${guest.name}` : ""}`}
+        >
+          Sign out
+        </button>
       </span>
     );
   }

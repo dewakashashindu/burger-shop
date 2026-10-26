@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CATS, DISHES, PACKAGES, PHOTO, ROOMS, money, type Dish, type Room } from "./booking-data";
 import type { MenuDish } from "../menu-data";
 import { usePathname, useRouter } from "next/navigation";
-import { forgetGuest, getGuest, refreshGuest, useGuest } from "../session";
+import { getGuest, refreshGuest, signOut, useGuest } from "../session";
 import SignInDialog, { type SignedInCustomer } from "../SignInDialog";
 
 const localNine = (phone: string) =>
@@ -652,9 +652,9 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
       <button
         type="button"
         className="text-link"
-        onClick={() => { forgetGuest(); }}
+        onClick={() => { void signOut(); }}
       >
-        Not you?
+        Not you? Sign out
       </button>
     </p>
   ) : null;

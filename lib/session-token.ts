@@ -12,7 +12,16 @@ import { lastNine } from "./phone";
  */
 
 export const SESSION_COOKIE = "mila_session";
-const SESSION_DAYS = 30;
+
+/**
+ * How long a sign-in lasts — 30 days unless SESSION_DAYS says otherwise.
+ * The page also ends a session that is left unused (see app/IdleSignOut.tsx);
+ * this is the outer limit, not the everyday one.
+ */
+const SESSION_DAYS = (() => {
+  const raw = Number(process.env.SESSION_DAYS ?? "30");
+  return Number.isFinite(raw) && raw > 0 ? Math.min(raw, 365) : 30;
+})();
 
 function secret(): string {
   const explicit = process.env.AUTH_SECRET?.trim();

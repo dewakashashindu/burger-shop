@@ -1,0 +1,163 @@
+/* Idle sign-out — one quiet warning bar, one plain-spoken card.
+   Both sit above the "Order now" and "Sign in" pills but below dialogs. */
+
+.idle-warn {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 65;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  max-width: calc(100vw - 32px);
+  padding: 10px 12px 10px 18px;
+  border: 1px solid rgba(122, 86, 52, 0.3);
+  border-radius: 999px;
+  background: rgba(250, 248, 241, 0.97);
+  color: #4a3a28;
+  font: 500 12.5px/1.35 Inter, Arial, sans-serif;
+  letter-spacing: 0.1px;
+  box-shadow: 0 16px 34px -20px rgba(95, 65, 38, 0.95);
+  backdrop-filter: blur(12px);
+  animation: idle-rise 0.32s ease both;
+}
+
+.idle-warn b {
+  font-weight: 700;
+}
+
+.idle-warn button {
+  flex: none;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: #3f3222;
+  color: #fdfaf4;
+  font: 600 12px/1 Inter, Arial, sans-serif;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.idle-warn button:hover {
+  background: #57452f;
+  transform: translateY(-1px);
+}
+
+.idle-warn button:focus-visible,
+.idle-card__link:focus-visible,
+.idle-card__close:focus-visible {
+  outline: 2px solid #8a6136;
+  outline-offset: 3px;
+}
+
+.idle-card {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 66;
+  width: min(360px, calc(100vw - 32px));
+  padding: 18px 20px 16px;
+  border: 1px solid rgba(122, 86, 52, 0.24);
+  border-radius: 12px;
+  background: #fdfaf4;
+  color: #4a3a28;
+  box-shadow: 0 22px 46px -26px rgba(95, 65, 38, 0.95);
+  animation: idle-rise 0.32s ease both;
+}
+
+.idle-card__title {
+  margin: 0 0 6px;
+  font: 600 15px/1.25 Inter, Arial, sans-serif;
+  letter-spacing: -0.1px;
+}
+
+.idle-card__body {
+  margin: 0 0 14px;
+  font: 400 12.5px/1.5 Inter, Arial, sans-serif;
+  color: #6b5541;
+}
+
+.idle-card__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.idle-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: #3f3222;
+  color: #fdfaf4;
+  font: 600 12px/1 Inter, Arial, sans-serif;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.idle-card__link:hover {
+  background: #57452f;
+  transform: translateY(-1px);
+}
+
+.idle-card__close {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #8a6136;
+  font: 600 12px/1 Inter, Arial, sans-serif;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+@keyframes idle-rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (max-width: 767px) {
+  .idle-warn {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    transform: none;
+    max-width: none;
+    border-radius: 14px;
+    justify-content: space-between;
+    padding-left: 14px;
+  }
+  .idle-card {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+    transform: none;
+    width: auto;
+  }
+  @keyframes idle-rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .idle-warn,
+  .idle-card {
+    animation: none;
+  }
+}

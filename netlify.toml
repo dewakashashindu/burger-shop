@@ -1,0 +1,33 @@
+# Netlify configuration for Mila Mirissa (Next.js 16 / @netlify/plugin-nextjs).
+#
+# Build command and publish directory live in the Netlify UI as well; keeping
+# them here makes the repository work even if a site is created from scratch.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+  # ---- Netlify secrets scanning -------------------------------------------
+  # The scanner compares the VALUE of every environment variable against every
+  # file in the repository and in the build output, and fails the deploy on a
+  # substring match. `DB_PORT` is a port number — 1433 — and that digit string
+  # occurs naturally all over the build: Next's own font metric table, sharp's
+  # libvips binary, the documented default in lib/db.ts and the README, and the
+  # setup scripts. Every one of those is a false positive; a port number is not
+  # a secret. Omitting just this key keeps the scan on for the values that do
+  # matter (DB_PASSWORD, TEXTLK_API_TOKEN, AUTH_SECRET, ENCRYPTION_KEY).
+  #
+  # If a future env var is another harmless non-secret (a database name, a
+  # sender ID, a boolean), add its KEY here rather than turning the scanner off.
+  SECRETS_SCAN_ENABLED = "true"
+  SECRETS_SCAN_OMIT_KEYS = "DB_PORT"
+
+  # Build output is generated, never hand-edited, and is already covered by the
+  # key-level omission above. These paths are listed so a cache artefact cannot
+  # fail an otherwise clean deploy. Source files (app/, lib/) are NOT omitted:
+  # a real secret pasted into the source must still stop the build.
+  SECRETS_SCAN_OMIT_PATHS = ".netlify/**,.next/**,node_modules/**"

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import IdleSignOut from "./IdleSignOut";
 import "./globals.css";
 import "./motion.css";
 import "./footer.css";
@@ -12,6 +13,7 @@ import "./reserve.css";
 import "./motion-site.css";
 import "./contact.css";
 import "./hero-video-card.css";
+import "./idle-signout.css";
 
 export const metadata: Metadata = {
   title: "Mila Mirissa — Kitchen & Good Company",
@@ -57,6 +59,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </div>
         </noscript>
         {children}
+        {/* Ends a session that is left unused — see IdleSignOut.tsx. */}
+        <IdleSignOut />
       </body>
     </html>
   );
