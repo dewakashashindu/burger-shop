@@ -1,41 +1,27 @@
 import { connection, NextResponse } from "next/server";
-import { readMenuItems } from "@/lib/menu-source";
-import { isDbConfigured, loadSql } from "@/lib/db";
+import { getMenuSnapshot } from "@/lib/menu-cache";
 
 /**
  * GET /api/menu/items
- * Read-only menu for the /menu page.
+ * Read-only menu for /menu and /order.
  *
- * Always answers 200 with `ok:false` when the database cannot be read, so the
- * page quietly keeps its built-in dishes and the browser console stays clean.
+ * The same one-minute cache the pages use, so a burst of visitors costs one
+ * database read rather than one per request. `state` tells the caller what
+ * happened — "ok", "unavailable" (configured but unreadable) or "unconfigured"
+ * (no database at all) — because the page must never present invented dishes
+ * as the restaurant's menu.
  */
 export async function GET() {
   await connection();
 
-  const sql = await loadSql();
-  const reason = !sql ? "driver-missing" : !isDbConfigured() ? "not-configured" : null;
-
-  if (reason) {
-    console.warn(
-      `[menu] live menu unavailable (${reason}) — showing the built-in dishes. Open /api/menu/health for details.`,
-    );
-    return NextResponse.json(
-      { ok: false, reason, items: [] },
-      { headers: { "cache-control": "no-store" } },
-    );
-  }
-
-  try {
-    const items = await readMenuItems();
-    return NextResponse.json(
-      { ok: true, items },
-      { headers: { "cache-control": "public, max-age=0, s-maxage=60, stale-while-revalidate=300" } },
-    );
-  } catch (error) {
-    console.error("[menu] database read failed:", error);
-    return NextResponse.json(
-      { ok: false, reason: "database-unavailable", items: [] },
-      { headers: { "cache-control": "no-store" } },
-    );
-  }
+  const snapshot = await getMenuSnapshot();
+  return NextResponse.json(
+    { ok: snapshot.state === "ok", state: snapshot.state, reason: snapshot.state, items: snapshot.state === "ok" ? snapshot.items : [] },
+    {
+      headers: {
+        // A minute at the edge, and the browser may re-use it briefly.
+        "cache-control": "public, max-age=0, s-maxage=60, stale-while-revalidate=300",
+      },
+    },
+  );
 }

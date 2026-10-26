@@ -7,6 +7,7 @@ import AuthScreen, { type AuthStage } from "./auth/AuthScreen";
 import BookingFlow from "./reserve/BookingFlow";
 import SiteFooter from "./SiteFooter";
 import MenuContent, { MenuDishDetails } from "./menu/MenuContent";
+import type { MenuSnapshot } from "@/lib/menu-cache";
 import { MENU_CATEGORIES, type MenuCategory, type MenuDish, type MenuFilter } from "./menu-data";
 import { mountStoryMotion } from "./story-motion";
 import OrderPill from "./OrderPill";
@@ -1275,7 +1276,7 @@ function OurStoryContent({
   );
 }
 
-export default function App({ storyPage = false, menuPage = false, contactPage = false, initialMenuCategory = "All dishes", authPage, reservePage = false, orderPage = false, startView }: { storyPage?: boolean; menuPage?: boolean; contactPage?: boolean; initialMenuCategory?: MenuFilter; authPage?: AuthStage; reservePage?: boolean; orderPage?: boolean; startView?: "reserve" }) {
+export default function App({ storyPage = false, menuPage = false, contactPage = false, initialMenuCategory = "All dishes", authPage, reservePage = false, orderPage = false, startView, menu }: { storyPage?: boolean; menuPage?: boolean; contactPage?: boolean; initialMenuCategory?: MenuFilter; authPage?: AuthStage; reservePage?: boolean; orderPage?: boolean; startView?: "reserve"; menu?: MenuSnapshot | null }) {
   const router = useRouter();
   const [selectedDish, setSelectedDish] = useState<MenuDish | null>(null);
   const [storyDetail, setStoryDetail] =
@@ -1416,7 +1417,7 @@ export default function App({ storyPage = false, menuPage = false, contactPage =
     return (
       <div className={`app-shell reserve-page-shell${orderPage ? " order-page-shell" : ""}`}>
         <MotionBoot />
-        <BookingFlow key={orderPage ? "order" : "reserve"} start={orderPage ? "order" : startView === "reserve" ? "reserve" : "choose"} />
+        <BookingFlow key={orderPage ? "order" : "reserve"} start={orderPage ? "order" : startView === "reserve" ? "reserve" : "choose"} menu={menu} />
         <SiteFooter />
         <SignInFab />
       </div>
@@ -1548,7 +1549,7 @@ export default function App({ storyPage = false, menuPage = false, contactPage =
         {contactPage ? (
           <ContactContent />
         ) : menuPage ? (
-          <MenuContent initialCategory={initialMenuCategory} onBooking={() => open("booking")} onDish={(dish) => { setSelectedDish(dish); open("dish"); }} />
+          <MenuContent initialCategory={initialMenuCategory} menu={menu} onBooking={() => open("booking")} onDish={(dish) => { setSelectedDish(dish); open("dish"); }} />
         ) : storyPage ? (
           <OurStoryContent
             onBooking={() => open("booking")}

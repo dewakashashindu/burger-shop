@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import MicroEChef from "../App";
+import { getMenuSnapshot } from "@/lib/menu-cache";
 
 export const metadata: Metadata = {
   title: "Order online — Mila Mirissa",
@@ -7,6 +8,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function OrderPage() {
-  return <MicroEChef key="order" orderPage />;
+// Same reasoning as /menu: the order page must open on the real dishes, never
+// on a placeholder that is then swapped underneath the guest's finger.
+export const dynamic = "force-dynamic";
+
+export default async function OrderPage() {
+  const menu = await getMenuSnapshot();
+  return <MicroEChef key="order" orderPage menu={menu} />;
 }

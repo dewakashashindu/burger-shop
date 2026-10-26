@@ -4,6 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CATS, DISHES, PACKAGES, PHOTO, ROOMS, money, type Dish, type Room } from "./booking-data";
+import type { MenuSnapshot } from "@/lib/menu-cache";
+import type { AvailabilityTable, AvailabilityBooking } from "@/lib/table-availability";
+import type { MenuItem } from "@/lib/menu-source";
 import type { MenuDish } from "../menu-data";
 import { usePathname, useRouter } from "next/navigation";
 import { getGuest, refreshGuest, signOut, useGuest } from "../session";
@@ -86,22 +89,90 @@ const phoneOk = (v: string) => {
 
 // The order page reads the same read-only menu as /menu, so the three levels
 // (Category -> L1Des -> L2Des -> dish) behave exactly the same in both places.
-function useLiveOrderMenu() {
-  const [rows, setRows] = useState<MenuDish[] | null>(null);
+//
+// The rows are read on the server (lib/menu-cache.ts) and arrive with the HTML:
+// the page opens on the dishes the kitchen actually sells, instead of showing a
+// made-up list and swapping it under the guest's finger a moment later. The
+// make-believe dishes in booking-data.ts are used only when no database has
+// been configured at all (a bare clone); a configured database that cannot be
+// read is reported honestly and nothing is invented.
+type OrderMenu = {
+  state: "ok" | "unavailable" | "unconfigured";
+  rows: MenuDish[] | null;
+};
+
+const toOrderRows = (items: MenuItem[]): MenuDish[] =>
+  items.map((item) => ({ ...item, detail: item.description }));
+
+function useLiveOrderMenu(initial?: MenuSnapshot | null): OrderMenu {
+  const [menu, setMenu] = useState<OrderMenu>(() => {
+    if (initial?.items?.length) return { state: "ok", rows: toOrderRows(initial.items) };
+    return { state: initial?.state === "unconfigured" ? "unconfigured" : "unavailable", rows: null };
+  });
+
   useEffect(() => {
+    if (initial?.items?.length) return;
+    // One quiet retry from the browser; the answer replaces a stale screen.
     let cancelled = false;
     const controller = new AbortController();
     fetch("/api/menu/items", { signal: controller.signal, cache: "no-store" })
       .then((response) => (response.ok ? response.json() : null))
-      .then((data: { items?: MenuDish[] } | null) => {
-        if (!cancelled && Array.isArray(data?.items) && data.items.length) setRows(data.items);
+      .then((data: { items?: MenuItem[] } | null) => {
+        if (cancelled) return;
+        if (Array.isArray(data?.items) && data.items.length) {
+          setMenu({ state: "ok", rows: toOrderRows(data.items) });
+        } else if (initial?.state !== "unconfigured") {
+          setMenu({ state: "unavailable", rows: null });
+        }
       })
       .catch(() => {
-        /* keep the built-in dishes */
+        /* keep what is on screen */
       });
     return () => { cancelled = true; controller.abort(); };
-  }, []);
-  return rows;
+  }, [initial]);
+
+  return menu;
+}
+
+// The day's bookings, read from dbo.Tbl_TabelReservation. Kept keyed by the date
+// it belongs to, so a stale answer for yesterday's date is never shown against
+// today's — `null` before the first answer, `unavailable` when the book cannot
+// be read (the form then keeps its plain area / table dropdowns).
+type DayBook = {
+  date: string;
+  state: "ok" | "unavailable";
+  tables: AvailabilityTable[];
+  bookings: AvailabilityBooking[];
+};
+
+function useDayBook(date: string): DayBook | null {
+  const [book, setBook] = useState<DayBook | null>(null);
+
+  useEffect(() => {
+    if (!date) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    fetch(`/api/tables/availability?date=${encodeURIComponent(date)}`, {
+      signal: controller.signal,
+      cache: "no-store",
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { ok?: boolean; tables?: AvailabilityTable[]; bookings?: AvailabilityBooking[] } | null) => {
+        if (cancelled || !data) return;
+        setBook({
+          date,
+          state: data.ok ? "ok" : "unavailable",
+          tables: Array.isArray(data.tables) ? data.tables : [],
+          bookings: Array.isArray(data.bookings) ? data.bookings : [],
+        });
+      })
+      .catch(() => {
+        /* no answer — the fallback dropdowns stay */
+      });
+    return () => { cancelled = true; controller.abort(); };
+  }, [date]);
+
+  return book;
 }
 
 // Pickup locations (Tbl_LocationMaster). When the database cannot be read the
@@ -315,7 +386,47 @@ const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLow
 const inGroup = (table: FloorTable, group: FloorGroup) =>
   same(table.group, group.id) || same(table.group, group.name) || same(table.groupName, group.name);
 
-export default function BookingFlow({ start = "choose" }: { start?: "choose" | "table" | "rooms" | "order" | "reserve" }) {
+// ── availability, worked out from the reservation book ───────────────────────
+// One call per date brings the tables and that day's bookings; everything below
+// is local arithmetic, so changing the time or the party size is instant.
+const minsOf = (hhmm: string) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0);
+};
+const sameTable = (a: string, b: string) => a.replace(/\s+/g, "").toLowerCase() === b.replace(/\s+/g, "").toLowerCase();
+
+/** The booking that already holds this table for some part of the window. */
+const clashFor = (bookings: AvailabilityBooking[], tableNo: string, from: string, to: string) =>
+  bookings.find((b) => sameTable(b.tableNo, tableNo) && minsOf(b.from) < minsOf(to) && minsOf(b.to) > minsOf(from));
+
+/**
+ * Every table of one group, each with the booking that blocks it — or nothing.
+ *
+ * Party size is deliberately NOT a filter: the guest asked to see the tables in
+ * an area, so all of them are listed and only the reservation book decides
+ * which ones are unavailable. The seat count is shown for information.
+ */
+const tablesInGroup = (tables: AvailabilityTable[], group: string) =>
+  tables
+    .filter((t) => sameTable(t.group, group) || sameTable(t.groupName, group))
+    .sort((a, b) => a.listingOrder - b.listingOrder || a.no.localeCompare(b.no));
+
+/** The group's tables with their state for one window. */
+const groupAvailability = (
+  tables: AvailabilityTable[],
+  bookings: AvailabilityBooking[],
+  group: string,
+  from: string,
+  to: string,
+) =>
+  tablesInGroup(tables, group).map((table) => ({
+    table,
+    clashes: bookings.filter(
+      (b) => sameTable(b.tableNo, table.no) && minsOf(b.from) < minsOf(to) && minsOf(b.to) > minsOf(from),
+    ),
+  }));
+
+export default function BookingFlow({ start = "choose", menu: initialMenu }: { start?: "choose" | "table" | "rooms" | "order" | "reserve"; menu?: MenuSnapshot | null }) {
   const [view, setView] = useState<View>(start === "order" ? "order" : start === "reserve" ? "reserve" : "choose");
   const [kind, setKind] = useState<Kind>("table");
   const [ref, setRef] = useState("");
@@ -363,6 +474,30 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     ? floor.tables.filter((table) => inGroup(table, activeGroup)).sort((a, b) => a.listingOrder - b.listingOrder || a.no.localeCompare(b.no))
     : [];
   const chosenTable = floor.tables.find((table) => table.no === t.tableNo) ?? null;
+
+  // ── Availability: date + time → group → every table in that group ────────
+  // The book for the chosen date, then the tables of the chosen area, each with
+  // the booking that blocks it. Party size is not used as a filter here: the
+  // guest decides with the seat count in front of them. When the book cannot be
+  // read at all the form keeps its plain dropdowns, so a bare clone still works.
+  const dayBook = useDayBook(t.date);
+  const windowTo = t.to || (t.from ? addMinutes(t.from, Number(periodLength)) : "");
+  const windowReady = Boolean(t.from && windowTo && minsOf(windowTo) > minsOf(t.from));
+  const bookReady = Boolean(t.date) && dayBook?.date === t.date && dayBook.state === "ok";
+  const areaValue = activeGroup ? activeGroup.id || activeGroup.name : t.group;
+  const groupState =
+    bookReady && windowReady && areaValue
+      ? groupAvailability(dayBook!.tables, dayBook!.bookings, areaValue, t.from, windowTo)
+      : [];
+  const freeInGroup = groupState.filter((row) => row.clashes.length === 0);
+  // What the booking writes and the guest is told: the group comes with the table.
+  const chosenAvailability =
+    bookReady && t.tableNo ? dayBook!.tables.find((table) => table.no === t.tableNo) ?? null : null;
+  const chosenIsFree = Boolean(
+    chosenAvailability &&
+      windowReady &&
+      !clashFor(dayBook!.bookings, chosenAvailability.no, t.from, windowTo),
+  );
 
   const [r, setR] = useState({
     cat: "all" as "all" | Room["cat"],
@@ -451,11 +586,13 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
   const [placeError, setPlaceError] = useState("");
 
   // Same tree as the menu page: top tab, then L1Des cards, then L2Des cards.
-  const liveMenu = useLiveOrderMenu();
+  const liveMenu = useLiveOrderMenu(initialMenu);
+  // Nothing is invented when the kitchen's list cannot be read: the grid says so.
+  const menuUnavailable = liveMenu.state === "unavailable";
   const dishes: Dish[] = useMemo(
     () =>
-      liveMenu
-        ? liveMenu.map((item) => ({
+      liveMenu.rows
+        ? liveMenu.rows.map((item) => ({
             id: item.id,
             name: item.name,
             tag: item.subGroup || item.group || item.categoryLabel || "",
@@ -466,7 +603,9 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
             group: item.group || "",
             sub: item.subGroup || "",
           }))
-        : DISHES.map((dish) => ({ ...dish, category: "Food", group: "", sub: "" })),
+        : liveMenu.state === "unconfigured"
+          ? DISHES.map((dish) => ({ ...dish, category: "Food", group: "", sub: "" }))
+          : [],
     [liveMenu],
   );
   const [orderCat, setOrderCat] = useState("All dishes");
@@ -773,7 +912,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
     if (!t.from) next.from = "Choose when the table starts.";
     if (!t.to) next.to = "Choose when the table is given back.";
     else if (t.from && t.to <= t.from) next.to = "The period has to end after it starts.";
-    if (!activeGroup) next.group = "Choose a dining area.";
+    if (!activeGroup) next.group = "Choose a table group.";
     if (!t.tableNo) next.tableNo = "Choose a table.";
     setErrors(next);
     if (Object.keys(next).length) return;
@@ -792,7 +931,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
         body: JSON.stringify({
           locCode: floor.locations[0]?.code ?? "",
           tableNo: t.tableNo,
-          groupName: activeGroup?.name ?? "",
+          groupName: activeGroup?.name ?? chosenAvailability?.groupName ?? "",
           date: t.date,
           timeFrom: t.from,
           timeTo: t.to,
@@ -1102,7 +1241,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
                 <button type="button" className="text-link" onClick={() => bringDetails(t.phone, "table")}>Bring my details</button>
               </p>
             )}
-            <Field id="tdate" label="Date *" type="date" min={tomorrow} value={t.date} onChange={(v) => setT({ ...t, date: v })} error={errors.date} />
+            <Field id="tdate" label="Date *" type="date" min={tomorrow} value={t.date} onChange={(v) => setT({ ...t, date: v, tableNo: "" })} error={errors.date} />
             <div className="field">
               <label htmlFor="tfrom">Time period *</label>
               <div className="period-row">
@@ -1113,7 +1252,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
                   onChange={(e) => {
                     const from = e.target.value;
                     const to = addMinutes(from, Number(periodLength));
-                    setT({ ...t, from, to: from ? to : "" });
+                    setT({ ...t, from, to: from ? to : "", tableNo: "" });
                   }}
                   aria-invalid={errors.from ? true : undefined}
                 >
@@ -1125,7 +1264,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
                   id="tto"
                   aria-label="Table until"
                   value={t.to}
-                  onChange={(e) => setT({ ...t, to: e.target.value })}
+                  onChange={(e) => setT({ ...t, to: e.target.value, tableNo: "" })}
                   aria-invalid={errors.to ? true : undefined}
                 >
                   <option value="">Until</option>
@@ -1141,7 +1280,7 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
                     aria-pressed={periodLength === length.id}
                     onClick={() => {
                       setPeriodLength(length.id);
-                      if (t.from) setT({ ...t, to: addMinutes(t.from, Number(length.id)) });
+                      if (t.from) setT({ ...t, to: addMinutes(t.from, Number(length.id)), tableNo: "" });
                     }}
                   >
                     {length.label}
@@ -1150,15 +1289,18 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
               </div>
               {(errors.from || errors.to) && <p className="err" role="alert">{errors.from || errors.to}</p>}
             </div>
+            {/* The area question opens only once a date and a period exist —
+                that is the order the reservation desk works in. */}
             <div className="field">
-              <label htmlFor="tgroup">Dining area *</label>
+              <label htmlFor="tgroup">Table group *</label>
               <select
                 id="tgroup"
                 value={t.group}
+                disabled={!windowReady}
                 onChange={(e) => setT({ ...t, group: e.target.value, tableNo: "" })}
                 aria-invalid={errors.group ? true : undefined}
               >
-                <option value="">Choose an area</option>
+                <option value="">{windowReady ? "Choose a group" : "Choose a date and a period first"}</option>
                 {floor.groups.map((group) => (
                   <option key={group.id || group.name} value={group.id || group.name}>
                     {group.name}{group.tableCount ? ` · ${group.tableCount} tables` : ""}
@@ -1166,45 +1308,146 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
                 ))}
               </select>
               {errors.group && <p className="err" role="alert">{errors.group}</p>}
+              <p className="micro">
+                {windowReady
+                  ? "Every table in the group is listed next — the reservation book decides which are free."
+                  : "The group opens as soon as the date and the time period are chosen."}
+              </p>
             </div>
-            <div className="field">
-              <label htmlFor="ttable">Table *</label>
-              <select
-                id="ttable"
-                value={t.tableNo}
-                onChange={(e) => setT({ ...t, tableNo: e.target.value })}
-                disabled={!activeGroup}
-                aria-invalid={errors.tableNo ? true : undefined}
-              >
-                <option value="">{activeGroup ? "Choose a table" : "Choose an area first"}</option>
-                {groupTables.map((table) => (
-                  <option key={table.no} value={table.no}>
-                    {table.no}{table.vacant === true ? " · vacant" : table.vacant === false ? " · occupied" : ""}
-                  </option>
-                ))}
-              </select>
+
+            <div className="field full avail">
+              <div className="avail-head">
+                <span className="lab" id="avail-label">Your table *</span>
+                {!windowReady ? (
+                  <span className="chip">Waiting for a date and a time</span>
+                ) : !t.date ? (
+                  <span className="chip">Choose a date</span>
+                ) : !activeGroup ? (
+                  <span className="chip">Choose a group</span>
+                ) : !bookReady ? (
+                  <span className="chip">Checking the reservation book…</span>
+                ) : (
+                  <>
+                    <span className="chip is-free">{freeInGroup.length} free</span>
+                    <span className="chip is-full">{groupState.length - freeInGroup.length} booked</span>
+                  </>
+                )}
+              </div>
+
+              {!bookReady ? (
+                // ── the book cannot be read: keep the plain table dropdown ──
+                <>
+                  <select
+                    id="ttable"
+                    aria-label="Table"
+                    value={t.tableNo}
+                    onChange={(e) => setT({ ...t, tableNo: e.target.value })}
+                    disabled={!activeGroup}
+                    aria-invalid={errors.tableNo ? true : undefined}
+                  >
+                    <option value="">{activeGroup ? "Choose a table" : "Choose a group first"}</option>
+                    {groupTables.map((table) => (
+                      <option key={table.no} value={table.no}>{table.no}</option>
+                    ))}
+                  </select>
+                  <p className="micro">
+                    {activeGroup
+                      ? `${groupTables.length} ${groupTables.length === 1 ? "table" : "tables"} in ${activeGroup.name} · the restaurant’s reservation book could not be read, so availability is not shown.`
+                      : "Areas and tables come from the restaurant’s floor plan."}
+                  </p>
+                </>
+              ) : !activeGroup ? (
+                <p className="avail-ask">
+                  Choose a table group above — every table in it is then listed with “free” or the hours it is
+                  already booked for.
+                </p>
+              ) : (
+                <>
+                  <p className="avail-verdict" role="status">
+                    <b>{freeInGroup.length}</b> of {groupState.length}{" "}
+                    {groupState.length === 1 ? "table" : "tables"} free in {activeGroup.name} for{" "}
+                    {prettyTime(t.from)} – {prettyTime(windowTo)}.
+                    <span className="avail-note"> Party size is not used here — pick by the seats shown.</span>
+                  </p>
+                  <div className="avail-grid" role="group" aria-labelledby="avail-label">
+                    {groupState.map(({ table, clashes: hits }) => {
+                      const booked = hits.length > 0;
+                      return (
+                        <button
+                          key={table.no}
+                          type="button"
+                          className="avail-t"
+                          data-off={booked ? "true" : "false"}
+                          aria-pressed={t.tableNo === table.no}
+                          onClick={() => {
+                            if (!booked) setT({ ...t, tableNo: table.no, group: areaValue });
+                          }}
+                        >
+                          <span className="top">
+                            <span className="no">{table.no}</span>
+                            {table.seats !== null && <span className="seats">seats {table.seats}</span>}
+                          </span>
+                          {booked ? (
+                            <span className="state off">
+                              Booked {hits.map((h) => `${h.from}–${h.to}`).join(", ")}
+                            </span>
+                          ) : (
+                            <span className="state">Free {prettyTime(t.from)} – {prettyTime(windowTo)}</span>
+                          )}
+                          <span className="why">
+                            {booked
+                              ? hits.map((h) => `overlaps: ${h.from} < ${t.to || windowTo} and ${h.to} > ${t.from}`).join(" · ")
+                              : "no booking touches this window"}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {t.tableNo && (
+                <p className="avail-chosen">
+                  {chosenIsFree ? (
+                    <>
+                      Chosen: <b>{t.tableNo}</b>
+                      {chosenAvailability?.groupName ? ` · ${chosenAvailability.groupName}` : ""} ·{" "}
+                      {prettyTime(t.from)} – {prettyTime(windowTo)}
+                      <button type="button" className="text-link" onClick={() => setT({ ...t, tableNo: "" })}>
+                        Change
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="warn">{t.tableNo} is no longer free for this window.</span>
+                      <button type="button" className="text-link" onClick={() => setT({ ...t, tableNo: "" })}>
+                        Choose another
+                      </button>
+                    </>
+                  )}
+                </p>
+              )}
               {errors.tableNo && <p className="err" role="alert">{errors.tableNo}</p>}
               <p className="micro">
-                {activeGroup
-                  ? `${groupTables.length} ${groupTables.length === 1 ? "table" : "tables"} in ${activeGroup.name}${floorLive ? "" : " · held in this build until the restaurant system answers"}.`
-                  : "Areas and tables come from the restaurant’s floor plan."}
+                Read from the reservation book itself — a table is blocked when a booking’s hours overlap your
+                period, not only when the start times match.
               </p>
             </div>
             <div className="field">
               <label htmlFor="tlocal">Local guests *</label>
               <div className="guest-stepper">
-                <button type="button" aria-label="One fewer local guest" onClick={() => setT({ ...t, local: String(Math.max(0, (Number(t.local) || 0) - 1)) })}>−</button>
-                <input id="tlocal" type="number" inputMode="numeric" min="0" max="200" step="1" value={t.local} onChange={(e) => setT({ ...t, local: e.target.value })} aria-invalid={errors.guests ? true : undefined} />
-                <button type="button" aria-label="One more local guest" onClick={() => setT({ ...t, local: String(Math.min(200, (Number(t.local) || 0) + 1)) })}>+</button>
+                <button type="button" aria-label="One fewer local guest" onClick={() => setT({ ...t, local: String(Math.max(0, (Number(t.local) || 0) - 1)), tableNo: "" })}>−</button>
+                <input id="tlocal" type="number" inputMode="numeric" min="0" max="200" step="1" value={t.local} onChange={(e) => setT({ ...t, local: e.target.value, tableNo: "" })} aria-invalid={errors.guests ? true : undefined} />
+                <button type="button" aria-label="One more local guest" onClick={() => setT({ ...t, local: String(Math.min(200, (Number(t.local) || 0) + 1)), tableNo: "" })}>+</button>
               </div>
               <p className="micro">Guests living in Sri Lanka.</p>
             </div>
             <div className="field">
               <label htmlFor="tforeign">Foreign guests</label>
               <div className="guest-stepper">
-                <button type="button" aria-label="One fewer foreign guest" onClick={() => setT({ ...t, foreign: String(Math.max(0, (Number(t.foreign) || 0) - 1)) })}>−</button>
-                <input id="tforeign" type="number" inputMode="numeric" min="0" max="200" step="1" value={t.foreign} onChange={(e) => setT({ ...t, foreign: e.target.value })} />
-                <button type="button" aria-label="One more foreign guest" onClick={() => setT({ ...t, foreign: String(Math.min(200, (Number(t.foreign) || 0) + 1)) })}>+</button>
+                <button type="button" aria-label="One fewer foreign guest" onClick={() => setT({ ...t, foreign: String(Math.max(0, (Number(t.foreign) || 0) - 1)), tableNo: "" })}>−</button>
+                <input id="tforeign" type="number" inputMode="numeric" min="0" max="200" step="1" value={t.foreign} onChange={(e) => setT({ ...t, foreign: e.target.value, tableNo: "" })} />
+                <button type="button" aria-label="One more foreign guest" onClick={() => setT({ ...t, foreign: String(Math.min(200, (Number(t.foreign) || 0) + 1)), tableNo: "" })}>+</button>
               </div>
               <p className="micro">Visiting from abroad.</p>
             </div>
@@ -1604,6 +1847,20 @@ export default function BookingFlow({ start = "choose" }: { start?: "choose" | "
       <p className="order-status micro" role="status">{orderStatusText}</p>
       <div className="cart-layout">
         <div className="order-grid">
+          {menuUnavailable && (
+            <div className="order-empty">
+              <span className="eyebrow">The kitchen’s list is out of reach</span>
+              <h3>We can’t show the menu.</h3>
+              <p>
+                Dishes and prices always come from the restaurant, so nothing is listed rather than
+                something that might be wrong. Call <a href="tel:0772336233">077 233 6233</a> to order,
+                or try again in a moment.
+              </p>
+              <button type="button" className="btn" onClick={() => { window.location.reload(); }}>
+                Try again <Arrow />
+              </button>
+            </div>
+          )}
           {orderQuery && !orderVisible.length && (
             <div className="order-empty">
               <span className="eyebrow">Nothing by that name</span>

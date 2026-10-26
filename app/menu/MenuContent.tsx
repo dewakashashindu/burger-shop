@@ -10,6 +10,8 @@ import {
   type MenuDish,
   type MenuFilter,
 } from "../menu-data";
+import type { MenuSnapshot } from "@/lib/menu-cache";
+import type { MenuItem } from "@/lib/menu-source";
 
 function MenuArrow() {
   return (
@@ -28,27 +30,94 @@ function MenuQuery({ onCategory }: { onCategory: (value: MenuFilter) => void }) 
   return null;
 }
 
-// The built-in menu is rendered on the server, so the page is complete without
-// JavaScript. If the restaurant database answers, the same screen is replaced
-// with the live rows (and their prices) a moment later.
-function useLiveMenu() {
-  const [live, setLive] = useState<MenuDish[] | null>(null);
+/**
+ * Where the dishes on screen come from.
+ *
+ * The rows are read on the server (lib/menu-cache.ts) and arrive with the HTML,
+ * so the page opens on the real menu. Nothing is swapped a moment later, and
+ * the illustrative dishes in menu-data.ts never appear in front of a guest
+ * unless no database has been configured at all.
+ *
+ * If the server could not read the database, one quiet retry from the browser
+ * is made — a transient failure then heals itself when the guest reloads —
+ * but the screen keeps saying "unavailable" until real rows arrive. It never
+ * falls back to a made-up menu.
+ */
+type MenuSource = {
+  state: "ok" | "unavailable" | "unconfigured";
+  items: MenuDish[];
+};
+
+/** A database row has no `detail`; the card shows the description there. */
+const toDishes = (items: MenuItem[]): MenuDish[] =>
+  items.map((item) => ({ ...item, detail: item.description }));
+
+const LAST_MENU_KEY = "microechef-last-menu";
+
+/** The menu this browser saw last, so a returning guest opens on real dishes. */
+function readLastMenu(): MenuDish[] | null {
+  try {
+    const raw = window.localStorage.getItem(LAST_MENU_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { items?: MenuDish[] };
+    if (Array.isArray(parsed?.items) && parsed.items.length) return parsed.items;
+  } catch {
+    /* private mode, or a stale shape — simply ask the server */
+  }
+  return null;
+}
+
+function rememberMenu(items: MenuDish[]) {
+  try {
+    window.localStorage.setItem(LAST_MENU_KEY, JSON.stringify({ at: Date.now(), items }));
+  } catch {
+    /* nothing to do — the server is the real source anyway */
+  }
+}
+
+function useMenuSource(initial: MenuSnapshot | null | undefined): MenuSource {
+  const [source, setSource] = useState<MenuSource>(() => {
+    if (initial?.items?.length) return { state: "ok", items: toDishes(initial.items) };
+    if (initial?.state === "unconfigured") return { state: "unconfigured", items: [] };
+    if (initial?.state === "unavailable") return { state: "unavailable", items: [] };
+    return { state: "ok", items: [] };
+  });
+
   useEffect(() => {
+    if (initial?.items?.length) {
+      rememberMenu(toDishes(initial.items));
+      return;
+    }
+    // No usable answer from the server: try once, silently, and prefer this
+    // browser's last real menu while that attempt is in flight.
     let cancelled = false;
     const controller = new AbortController();
+    const cached = initial?.state === "unconfigured" ? null : readLastMenu();
+    // Deferred one tick: setting state synchronously inside an effect causes a
+    // cascading render, and React's lint rules refuse it. One tick is invisible
+    // to a guest and keeps this browser's last real menu on screen meanwhile.
+    const tick = window.setTimeout(() => {
+      if (!cancelled && cached) setSource({ state: "ok", items: cached });
+    }, 0);
     fetch("/api/menu/items", { signal: controller.signal, cache: "no-store" })
       .then((response) => (response.ok ? response.json() : null))
-      .then((data: { items?: MenuDish[] } | null) => {
-        if (!cancelled && Array.isArray(data?.items) && data.items.length) {
-          setLive(data.items.map((item) => ({ ...item, detail: item.detail ?? item.description })));
+      .then((data: { state?: string; items?: MenuItem[] } | null) => {
+        if (cancelled) return;
+        if (Array.isArray(data?.items) && data.items.length) {
+          const items = toDishes(data.items);
+          setSource({ state: "ok", items });
+          rememberMenu(items);
+        } else if (initial?.state !== "unconfigured") {
+          setSource({ state: "unavailable", items: [] });
         }
       })
       .catch(() => {
-        /* Keep the built-in menu. */
+        /* Keep whatever is on screen. */
       });
-    return () => { cancelled = true; controller.abort(); };
-  }, []);
-  return live;
+    return () => { cancelled = true; controller.abort(); window.clearTimeout(tick); };
+  }, [initial]);
+
+  return source;
 }
 
 type Collection = {
@@ -63,16 +132,23 @@ const uniq = (values: string[]) => Array.from(new Set(values)).filter(Boolean);
 
 export default function MenuContent({
   initialCategory = "All dishes",
+  menu,
   onDish,
   onBooking,
 }: {
   initialCategory?: MenuFilter;
+  /** The rows the server read. Absent only on an older page or a bare clone. */
+  menu?: MenuSnapshot | null;
   onDish: (dish: MenuDish) => void;
   onBooking: () => void;
 }) {
-  const live = useLiveMenu();
-  const items = live ?? SRI_LANKAN_MENU;
-  const showPrices = Boolean(live);
+  const source = useMenuSource(menu);
+  // A database that has not been configured at all is a demo, not a fault: the
+  // illustrative dishes are then the only menu there is, and they are labelled
+  // as such. A configured but unreachable database is a fault, and is said so.
+  const demo = source.state === "unconfigured";
+  const items = demo ? SRI_LANKAN_MENU : source.items;
+  const showPrices = !demo && source.state === "ok";
   const [category, setCategory] = useState<MenuFilter>(initialCategory);
   // Level 2 = L1Des (KIDS MENU, LUNCH & DINNER…), level 3 = L2Des (RICE, CURRY…).
   // An empty group means the tab has no sub categories and shows its dishes.
@@ -88,7 +164,7 @@ export default function MenuContent({
 
   // The database stores the top tab as a code (F, B, O). The API already sends a
   // readable label, so the tabs read Food / Beverage / Other — never F / B / O.
-  const isLive = Boolean(live);
+  const isLive = !demo && source.state === "ok";
   const labelOf = (dish: MenuDish) => dish.categoryLabel || dish.category;
   const topTabs = isLive
     ? Array.from(new Set(items.map(labelOf)))
@@ -173,6 +249,38 @@ export default function MenuContent({
     if (level === "category") { setGroup(""); setSub(""); }
     if (level === "group") { setSub(""); }
   };
+
+  // The database is configured but could not be read. Say so, plainly, and do
+  // not invent a menu — a guest who orders from a photograph of a dish the
+  // kitchen stopped serving is worse than a guest who is told to call.
+  if (source.state === "unavailable") {
+    return (
+      <div className="warm-menu">
+        <Suspense fallback={null}><MenuQuery onCategory={applyURLCategory} /></Suspense>
+        <section className="wm-hero wm-wrap" aria-labelledby="menu-heading">
+          <div className="wm-hero-copy">
+            <span className="eyebrow">THE MENU / SRI LANKAN FAVOURITES</span>
+            <h1 id="menu-heading">The menu is<br /><em>being plated.</em></h1>
+            <p>Our kitchen’s list could not be reached just now.<br />Please try again in a moment.</p>
+            <div className="wm-hero-note"><i aria-hidden="true" />Good food. Made for good company.</div>
+          </div>
+        </section>
+        <section className="wm-catalog wm-wrap">
+          <div className="wm-empty">
+            <h3>The menu isn’t loading.</h3>
+            <p>
+              Prices and dishes always come from the restaurant itself, so nothing is shown rather
+              than something that might be wrong. Call <a href="tel:0772336233">077 233 6233</a> and
+              we’ll read it out to you, or try the page again.
+            </p>
+            <button className="button button-dark" onClick={() => window.location.reload()}>
+              Try again <MenuArrow />
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="warm-menu">
