@@ -28,7 +28,7 @@ export type Dish = {
 };
 
 export const PHOTO = {
-  restaurant: "/images/restaurant.jpg",
+  restaurant: "/images/table-beach.jpg",
   bath: "/images/room-bath.jpg",
   breakfast: "/images/room-breakfast.jpg",
 };
@@ -38,7 +38,7 @@ export const ROOMS: Room[] = [
     id: "garden",
     cat: "rooms",
     name: "Garden Room",
-    img: "/images/room-garden.jpg",
+    img: "/images/room-beach-garden.jpg",
     size: "32 m²",
     sleeps: 2,
     local: 24500,
@@ -46,7 +46,7 @@ export const ROOMS: Room[] = [
     blurb:
       "A calm room opening straight onto the garden, with a low linen bed and a wide shaded doorway.",
     feature: "Garden view",
-    gallery: ["/images/room-garden.jpg", PHOTO.bath, PHOTO.breakfast],
+    gallery: ["/images/room-beach-garden.jpg", PHOTO.bath, PHOTO.breakfast],
   },
   {
     id: "twin",
@@ -92,7 +92,7 @@ export const ROOMS: Room[] = [
 ];
 
 export const CATS = [
-  { id: "rooms", name: "Garden rooms", note: "For two, close to the garden", img: "/images/room-garden.jpg" },
+  { id: "rooms", name: "Garden rooms", note: "For two, close to the garden", img: "/images/room-beach-garden.jpg" },
   { id: "suites", name: "Courtyard suites", note: "More room, your own courtyard", img: "/images/room-courtyard.jpg" },
   { id: "residences", name: "Family residences", note: "Space for the whole table", img: "/images/room-family.jpg" },
 ] as const;

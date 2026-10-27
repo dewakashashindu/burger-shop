@@ -1198,7 +1198,7 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
           </span>
         </button>
         <button className="pick-card reveal" style={{ ["--d" as string]: "150ms" }} type="button" onClick={() => go("rooms", "room")}>
-          <span className="ph"><Image src="/images/room-garden.jpg" alt="A garden room at Mila Mirissa" width={720} height={420} sizes="(max-width:900px) 100vw, 46vw" /></span>
+          <span className="ph"><Image src="/images/room-beach-garden.jpg" alt="Beach garden bungalow at Mila Mirissa" width={720} height={420} sizes="(max-width:900px) 100vw, 46vw" /></span>
           <span className="body">
             <span className="ic"><BedIcon /></span>
             <strong>Room reservation</strong>

@@ -679,9 +679,9 @@ function OurStoryContent({
             <div className="hero-image-frame">
               <figure className="place-photo">
                 <Image
-                  alt="Illustrative cream and olive restaurant interior"
+                  alt="Mila Mirissa beach terrace at sunset with ocean horizon"
                   loading="eager"
-                  src="/images/restaurant.jpg"
+                  src="/images/story-hero-beach.jpg"
                   width="1376"
                   height="768"
                   sizes="100vw"
@@ -1161,9 +1161,9 @@ function OurStoryContent({
             >
               <figure className="location-photo">
                 <Image
-                  alt="Illustrative cream and olive restaurant interior"
+                  alt="Mila Mirissa beach terrace exterior"
                   loading="lazy"
-                  src="/images/restaurant.jpg"
+                  src="/images/story-hero-beach.jpg"
                   width="1376"
                   height="768"
                   sizes="100vw"
@@ -1171,7 +1171,7 @@ function OurStoryContent({
               </figure>
               <div className="location-copy">
                 <span className="eyebrow">
-                  {"Location 01 / Details pending"}
+                  {"Location 01 / Beach side, Mirissa"}
                 </span>
                 <h3>{"The main restaurant"}</h3>
                 <p>
@@ -1849,8 +1849,8 @@ export default function App({ storyPage = false, menuPage = false, contactPage =
                         width={1376}
                         height={768}
                         sizes="(max-width: 767px) 100vw, 50vw"
-                        src={IMAGE.restaurant}
-                        alt="An inviting table in the Mila Mirissa restaurant concept"
+                        src="/images/arch-kitchen-beach.jpg"
+                        alt="Mila Mirissa arch view with rattan lights and brick bar"
                         loading="lazy"
                       />
                       <div className="story-photo-top">
