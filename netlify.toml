@@ -6,7 +6,7 @@
 [build]
   command = "npm run build"
   publish = ".next"
-  ignore = "exit 0"
+  ignore = "exit 1"
 
 [build.environment]
   NODE_VERSION = "22"

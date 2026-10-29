@@ -3,8 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { CATS, DISHES, PACKAGES, PHOTO, ROOMS, money, type Dish, type Room } from "./booking-data";
-import RoomStayCalendar, { timeAdjustment } from "./RoomStayCalendar";
+import { DISHES, PACKAGES, PHOTO, money, type Dish, type Room } from "./booking-data";
+import RoomBookingFlow from "./RoomBookingFlow";
 import type { MenuSnapshot } from "@/lib/menu-cache";
 import type { AvailabilityTable, AvailabilityBooking } from "@/lib/table-availability";
 import type { MenuItem } from "@/lib/menu-source";
@@ -216,17 +216,8 @@ const BagIcon = () => (
 const PlusIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
 );
-const CheckIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 13 4.5 4.5L19 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
-);
 const TickIcon = () => (
   <svg viewBox="0 0 48 48" fill="none" aria-hidden="true"><path d="m11 25 9 9 17-20" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-);
-const LeafIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 4C9 4 4 9 4 16c0 2 1 4 1 4s2-9 15-12M6 20c2-6 7-9 11-10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
-);
-const UsersIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3" stroke="currentColor" strokeWidth="1.3" /><path d="M3 20c.6-3.6 3-5.5 6-5.5s5.4 1.9 6 5.5M16 5.5a3 3 0 0 1 0 5.8M18 14.8c2 .6 3.2 2.3 3.6 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
 );
 const ClockIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.3" /><path d="M12 7.5V12l3 2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
@@ -507,10 +498,6 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
     gallery: 0,
     checkin: "",
     checkout: "",
-    // Arrival and departure times — the stay is a date range AND a pair of
-    // times; check-in is from 2pm, check-out by 11am unless changed.
-    timeIn: "14:00",
-    timeOut: "11:00",
     guests: 2,
     name: "",
     phone: "",
@@ -518,22 +505,6 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
     pkg: "breakfast" as (typeof PACKAGES)[number]["id"],
     note: "",
   });
-  const room = ROOMS.find((x) => x.id === r.id);
-  const nights = (() => {
-    if (!r.checkin || !r.checkout) return 0;
-    const a = new Date(`${r.checkin}T12:00:00`).getTime();
-    const b = new Date(`${r.checkout}T12:00:00`).getTime();
-    return Math.max(0, Math.round((b - a) / 864e5));
-  })();
-  const cur: "LKR" | "USD" = r.guestType === "local" ? "LKR" : "USD";
-  const stayPkg = PACKAGES.find((p) => p.id === r.pkg) ?? PACKAGES[0];
-  const pkgRate = cur === "LKR" ? stayPkg.local : stayPkg.foreign;
-  const roomRate = room ? (cur === "LKR" ? room.local : room.foreign) : 0;
-  const roomTotal = (roomRate + pkgRate) * Math.max(nights, 0);
-  // Early arrival / late departure are quoted by the desk, not charged here:
-  // the line is shown next to the total so nothing is a surprise on arrival.
-  const stayAdj = timeAdjustment(r.timeIn, r.timeOut);
-
   const [order, setOrder] = useState({
     method: "delivery" as "delivery" | "pickup",
     name: "",
@@ -1505,226 +1476,6 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
     </main>
   );
 
-  const roomCats = (
-    <main className="shell flow">
-      {crumbs([{ label: "Start", onClick: () => go("choose") }, { label: "Reservation", onClick: () => go("reserve") }, { label: "Stay" }])}
-      <div className="flow-head reveal">
-        <div>
-          <span className="eyebrow">ROOM RESERVATION</span>
-          <h1 className="display">Stay a little<br /><em>longer.</em></h1>
-          <p className="lede">Choose the kind of stay that suits you. Every room opens to the garden or a courtyard.</p>
-        </div>
-      </div>
-      <div className="cat-grid">
-        {CATS.map((c, i) => (
-          <button key={c.id} className="cat-card reveal" style={{ ["--d" as string]: `${i * 80}ms` }} type="button" onClick={() => { setR({ ...r, cat: c.id }); go("roomList"); }}>
-            <span className="ph"><Image src={c.img} alt={c.name} width={1200} height={746} sizes="(max-width:767px) 100vw, 33vw" /></span>
-            <span className="body"><span><strong>{c.name}</strong><small>{c.note}</small></span><span className="go"><Arrow /></span></span>
-          </button>
-        ))}
-      </div>
-      <div className="panel reveal" style={{ marginBottom: 16 }}>
-        <h3>Stay packages</h3>
-        <p className="hint" style={{ margin: "4px 0 14px" }}>Choose one when you book. Prices are per room, per night — local guest in LKR, foreign guest in USD.</p>
-        <div className="extras" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))" }}>
-          {PACKAGES.map((p) => (
-            <div key={p.id} className="extra" style={{ cursor: "default" }}>
-              <span className="box" style={{ borderRadius: "50%", background: p.local ? "#faf8f1" : "var(--ink)", borderColor: p.local ? "var(--line2)" : "var(--ink)", display: "grid", placeItems: "center" }}>
-                {!p.local && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--paper)", display: "block" }} />}
-              </span>
-              <span>{p.name}<small>{p.local ? "Added per night" : "The simple start"}</small></span>
-              <b>{p.local ? `${money(p.local, "LKR")} / ${money(p.foreign, "USD")}` : "Included"}</b>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="panel reveal" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
-        <div>
-          <h3>Looking for every room?</h3>
-          <p className="hint">See all stays, photos, rates for local and foreign guests, and what’s included.</p>
-        </div>
-        <button className="btn" type="button" onClick={() => { setR({ ...r, cat: "all" }); go("roomList"); }}>Browse all rooms <Arrow /></button>
-      </div>
-    </main>
-  );
-
-  const roomList = (
-    <main className="shell flow">
-      {crumbs([{ label: "Start", onClick: () => go("choose") }, { label: "Stay", onClick: () => go("rooms") }, { label: "Rooms" }])}
-      <div className="flow-head">
-        <div>
-          <span className="eyebrow">ROOMS &amp; SUITES</span>
-          <h1 className="display">{r.cat === "all" ? <>Every room,<br /><em>every mood.</em></> : <>{CATS.find((c) => c.id === r.cat)?.name},<br /><em>your way.</em></>}</h1>
-          <p className="lede">Rates are shown per night. Choose local or foreign guest rates to see prices in LKR or USD.</p>
-        </div>
-        <div className="seg" role="group" aria-label="Guest rate">
-          <button type="button" onClick={() => setR({ ...r, guestType: "local" })} aria-pressed={r.guestType === "local"}>Local guest · LKR</button>
-          <button type="button" onClick={() => setR({ ...r, guestType: "foreign" })} aria-pressed={r.guestType === "foreign"}>Foreign guest · USD</button>
-        </div>
-      </div>
-      <div className="room-list">
-        {ROOMS.filter((x) => r.cat === "all" || x.cat === r.cat).map((x, i) => (
-          <article className="room-row reveal" style={{ ["--d" as string]: `${i * 90}ms` }} key={x.id}>
-            <div className="ph"><Image src={x.gallery[0]} alt={`${x.name} interior`} width={1200} height={746} sizes="(max-width:900px) 100vw, 55vw" /></div>
-            <div className="body">
-              <span className="eyebrow">{CATS.find((c) => c.id === x.cat)?.name}</span>
-              <h3>{x.name}</h3>
-              <p className="lede" style={{ fontSize: 11.5, maxWidth: "none" }}>{x.blurb}</p>
-              <div className="meta">
-                <span><LeafIcon />{x.size}</span>
-                <span><UsersIcon />Sleeps {x.sleeps}</span>
-                <span><PinIcon />{x.feature}</span>
-              </div>
-              <div className="chips"><span>Breakfast available</span><span>Air conditioning</span><span>Check-in 2pm</span></div>
-              <div className="rate">
-                <div><small>From, per night</small><b>{money(r.guestType === "local" ? x.local : x.foreign, r.guestType === "local" ? "LKR" : "USD")}</b></div>
-                <button className="btn small" type="button" onClick={() => { setR({ ...r, id: x.id, gallery: 0 }); go("room"); }}>View room <Arrow /></button>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
-      <div className="actions">
-        <button className="text-link" type="button" onClick={() => go("rooms")}><Left /> Back to categories</button>
-        <span className="micro">Rates are indicative and confirmed by the restaurant.</span>
-      </div>
-    </main>
-  );
-
-  const roomView = room && (
-    <main className="shell flow">
-      {crumbs([{ label: "Start", onClick: () => go("choose") }, { label: "Rooms", onClick: () => { setR({ ...r, cat: "all" }); go("roomList"); } }, { label: room.name }])}
-      <div className="detail">
-        <div className="reveal">
-          <div className="gallery-main">
-            <Image src={room.gallery[r.gallery]} alt={`${room.name} photo ${r.gallery + 1}`} width={1200} height={746} sizes="(max-width:900px) 100vw, 55vw" />
-            <span className="tag">{room.feature} · {room.size}</span>
-          </div>
-          <div className="thumbs" role="group" aria-label="Room photos">
-            {room.gallery.map((g, i) => (
-              <button key={g + i} type="button" aria-pressed={r.gallery === i} aria-label={`Show photo ${i + 1}`} onClick={() => setR({ ...r, gallery: i })}>
-                <Image src={g} alt="" width={1200} height={746} sizes="120px" />
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="reveal" style={{ ["--d" as string]: "100ms" }}>
-          <span className="eyebrow">{CATS.find((c) => c.id === room.cat)?.name}</span>
-          <h1>{room.name}</h1>
-          <p className="lede">{room.blurb}</p>
-          <div className="amenities">
-            <span><LeafIcon />{room.size} interior</span><span><UsersIcon />Sleeps up to {room.sleeps}</span>
-            <span><ClockIcon />Check-in 2pm · out 11am</span><span><PinIcon />{room.feature}</span>
-            <span><CheckIcon />Breakfast available</span><span><CheckIcon />Air conditioning</span>
-          </div>
-          <div className="seg" role="group" aria-label="Guest rate">
-            <button type="button" onClick={() => setR({ ...r, guestType: "local" })} aria-pressed={r.guestType === "local"}>Local guest · LKR</button>
-            <button type="button" onClick={() => setR({ ...r, guestType: "foreign" })} aria-pressed={r.guestType === "foreign"}>Foreign guest · USD</button>
-          </div>
-          <div className="price-box">
-            <div className="row"><span className="micro">Per night</span><strong style={{ font: "27px/1 Georgia,serif", fontWeight: 400 }}>{money(r.guestType === "local" ? room.local : room.foreign, r.guestType === "local" ? "LKR" : "USD")}</strong></div>
-            <p className="micro" style={{ marginTop: 8 }}>Room only. Breakfast, half board and full board can be added next.</p>
-          </div>
-          <div className="actions" style={{ justifyContent: "flex-start" }}>
-            <button className="text-link" type="button" onClick={() => { setR({ ...r, cat: "all" }); go("roomList"); }}><Left /> All rooms</button>
-            <button className="btn" type="button" onClick={() => go("roomBook")}>Reserve this room <Arrow /></button>
-          </div>
-        </div>
-      </div>
-    </main>
-  );
-
-  const roomForm = room && (
-    <main className="shell flow">
-      {crumbs([{ label: "Start", onClick: () => go("choose") }, { label: "Rooms", onClick: () => { setR({ ...r, cat: "all" }); go("roomList"); } }, { label: room.name, onClick: () => go("room") }, { label: "Book" }])}
-      <div className="flow-head">
-        <div>
-          <span className="eyebrow">ROOM RESERVATION</span>
-          <h1 className="display">Your stay,<br /><em>in a few details.</em></h1>
-          <p className="lede">Check-in is from 2pm and check-out is at 11am. Tell us who’s coming and when.</p>
-        </div>
-      </div>
-      <div className="split">
-        <section className="panel reveal">
-          <h3>Your dates &amp; times</h3>
-          <div style={{ marginTop: 14 }}>
-            <RoomStayCalendar
-              checkin={r.checkin}
-              checkout={r.checkout}
-              timeIn={r.timeIn}
-              timeOut={r.timeOut}
-              error={errors.checkin || errors.checkout}
-              onChange={(patch) => setR((old) => ({ ...old, ...patch }))}
-            />
-          </div>
-          <div className="form-grid" style={{ marginTop: 18 }}>
-            <div className="field full">
-              <span className="lab" id="rgLab">Guests</span>
-              <div className="guest-pills" role="group" aria-labelledby="rgLab">
-                {Array.from({ length: room.sleeps }, (_, i) => i + 1).map((n) => (
-                  <button key={n} type="button" aria-pressed={r.guests === n} onClick={() => setR({ ...r, guests: n })}>{n}</button>
-                ))}
-              </div>
-              <p className="micro">This room sleeps up to {room.sleeps}.</p>
-            </div>
-          </div>
-          <h3 style={{ marginTop: 26 }}>Package</h3>
-          <p className="hint" style={{ marginBottom: 12 }}>Added per night, for the room.</p>
-          <div className="seg" role="group" aria-label="Package" style={{ borderRadius: 8 }}>
-            {PACKAGES.map((p) => (
-              <button key={p.id} type="button" style={{ borderRadius: 5 }} aria-pressed={r.pkg === p.id} onClick={() => setR({ ...r, pkg: p.id })}>
-                {p.name}{p.local || p.foreign ? ` · +${money(cur === "LKR" ? p.local : p.foreign, cur)}` : " · included"}
-              </button>
-            ))}
-          </div>
-          <h3 style={{ marginTop: 26 }}>Guest details</h3>
-          <div className="form-grid" style={{ marginTop: 16 }}>
-            <Field id="rphone" label="Phone number" value={r.phone} onChange={(v) => setR({ ...r, phone: v })} placeholder="07X XXX XXXX" inputMode="tel" error={errors.phone} autoComplete="tel" full />
-            <Field id="rname" label="Full name" value={r.name} onChange={(v) => setR({ ...r, name: v })} placeholder={bookR?.verified && bookR.name ? bookR.name : "Fills in from your number"} error={errors.name} autoComplete="name" full />
-            {bookR && !bookR.verified && bookR.hasAccount && (
-              <p className="book-note full">
-                <InfoIcon />
-                <span>This number has an account — sign in once and your name comes with it.</span>
-                <button type="button" className="text-link" onClick={() => bringDetails(r.phone, "room")}>Bring my details</button>
-              </p>
-            )}
-            <Field id="rid" label="NIC or passport number" value={r.idno} onChange={(v) => setR({ ...r, idno: v })} placeholder="For the guest register" error={errors.idno} maxLength={30} />
-            <div className="field">
-              <span className="lab">Guest rate</span>
-              <div className="seg" style={{ borderRadius: 8 }}>
-                <button type="button" style={{ borderRadius: 5 }} aria-pressed={r.guestType === "local"} onClick={() => setR({ ...r, guestType: "local" })}>Local</button>
-                <button type="button" style={{ borderRadius: 5 }} aria-pressed={r.guestType === "foreign"} onClick={() => setR({ ...r, guestType: "foreign" })}>Foreign</button>
-              </div>
-            </div>
-            <TextArea id="rnote" label="Special requests" value={r.note} onChange={(v) => setR({ ...r, note: v })} placeholder="Late arrival, dietary needs, a quiet room…" />
-          </div>
-          {signInHint}
-          {signedInLine}
-          <div className="actions">
-            <button className="text-link" type="button" onClick={() => go("room")}><Left /> Back to room</button>
-            <button className="btn" type="button" onClick={confirmRoom}>Confirm stay <Arrow /></button>
-          </div>
-        </section>
-        {summary(
-          <>
-            <div className="sum-line"><span>Check-in</span><b>{r.checkin ? `${prettyDay(r.checkin)} · ${prettyTime(r.timeIn)}` : "—"}</b></div>
-            <div className="sum-line"><span>Check-out</span><b>{r.checkout ? `${prettyDay(r.checkout)} · ${prettyTime(r.timeOut)}` : "—"}</b></div>
-            {Boolean(stayAdj.early || stayAdj.latePct) && r.checkin && (
-              <div className="sum-line"><span>{stayAdj.early ? "Early arrival" : "Late departure"}</span><b>quoted by the desk</b></div>
-            )}
-            <div className="sum-line"><span>Guests</span><b>{r.guests}</b></div>
-            <div className="sum-line"><span>Package</span><b>{stayPkg.name}</b></div>
-            <div className="sum-line"><span>Rate · {cur === "LKR" ? "local" : "foreign"} guest</span><b>{money(roomRate, cur)}</b></div>
-            <div className="sum-total"><span>Total</span><strong>{nights ? money(roomTotal, cur) : "—"}</strong></div>
-          </>,
-          <><span>{room.name}</span><span>{nights || 0} {nights === 1 ? "night" : "nights"}</span></>,
-          [stayAdj.note, "Rates are indicative. No payment is taken on this website."].filter(Boolean).join(" "),
-          room.img,
-        )}
-      </div>
-    </main>
-  );
-
   const orderSummary = (
     <aside className="sticky-sum reveal" style={{ ["--d" as string]: "120ms" }}>
       <h3>Your order</h3>
@@ -2180,7 +1931,7 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
           {kind === "order"
             ? `Thank you, ${order.name.split(" ")[0] || "friend"}. ${isDelivery ? "Delivery" : "Pickup"} for ${scheduleLabel || "your chosen time"}${!isDelivery && pickupLocationName ? ` at ${pickupLocationName}` : ""}. The kitchen will call ${order.phone} to confirm.`
             : kind === "room"
-              ? `${r.name.split(" ")[0] || "Guest"}, we’ve noted your stay — in on ${prettyDay(r.checkin)} from ${prettyTime(r.timeIn)}, out on ${prettyDay(r.checkout)} by ${prettyTime(r.timeOut)}.`
+              ? `${r.name.split(" ")[0] || "Guest"}, we’ve noted your stay from ${r.checkin} to ${r.checkout}.`
               : `Thank you, ${t.name.split(" ")[0] || "friend"}. ${t.tableNo} is yours from ${prettyTime(t.from)} to ${prettyTime(t.to)} on ${prettyDay(t.date)} for ${guests} ${guests === 1 ? "guest" : "guests"}.`}
         </p>
         <p className="micro">
@@ -2201,18 +1952,20 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
     </main>
   );
 
+  // The stay is its own journey now — dates, rooms, room detail, the booking
+  // summary, guest details, confirmation — so all four room views hand over to
+  // RoomBookingFlow. The table and the order keep the views they had.
+  const roomStay = <RoomBookingFlow onExit={() => go("choose")} />;
+
   const body =
     view === "choose" ? chooser
       : view === "reserve" ? reserveChoice
         : view === "table" ? tableForm
-          : view === "rooms" ? roomCats
-            : view === "roomList" ? roomList
-              : view === "room" ? roomView
-                : view === "roomBook" ? roomForm
-                  : view === "order" ? orderView
-                    : view === "cart" ? cartView
-                      : view === "checkout" ? checkout
-                        : success;
+          : view === "rooms" || view === "roomList" || view === "room" || view === "roomBook" ? roomStay
+            : view === "order" ? orderView
+              : view === "cart" ? cartView
+                : view === "checkout" ? checkout
+                  : success;
 
   const showCart = ["order", "cart", "checkout"].includes(view);
 
