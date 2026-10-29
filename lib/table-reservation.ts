@@ -1,13 +1,19 @@
 import { getPool, isDbConfigured, loadSql } from "./db";
-import { readSerialsShape, takeSerial, type TxRequest } from "./web-order";
+import { allocateTxnNumber } from "./txn-number";
+import type { TxRequest } from "./web-order";
 
 /**
  * The one place a table booking is written: dbo.Tbl_TabelReservation.
  *
- * Nothing else in the POS tables is touched. The reservation number comes from
- * dbo.Tbl_Serials under the code 'RES', taken inside the same transaction with
- * `UPDLOCK, HOLDLOCK` — the very same rules the QR order code uses, so two
- * guests pressing "Confirm" at once can never share a booking id.
+ * Nothing else in the POS tables is touched. The booking number comes from the
+ * restaurant's own counter, dbo.Tbl_TxnNumbers — the row `LoCCode 01 ·
+ * TxnType RV · Prefix T`, which the desk calls "TABEL RESERVATION". With that
+ * row standing at 12 the next booking is T000013 and the row is left at 13.
+ *
+ * The number is taken inside the same transaction as the INSERT, under
+ * `UPDLOCK, HOLDLOCK`, so two guests pressing "Confirm" at the same second can
+ * never share a booking id — and if the row is missing or switched off the
+ * booking is refused rather than given an invented number.
  */
 
 export const RESERVATION_TABLE = "dbo.Tbl_TabelReservation";
@@ -55,14 +61,6 @@ export async function createTableReservation(input: ReservationInput): Promise<R
 
   const pool = (await getPool()) as unknown as { transaction(): { begin(): Promise<unknown>; commit(): Promise<unknown>; rollback(): Promise<unknown>; request(): TxRequest }; request(): TxRequest };
 
-  let shape;
-  try {
-    shape = await readSerialsShape(pool);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return { ok: false, error: { kind: "database", message } };
-  }
-
   const tx = pool.transaction();
   try {
     await tx.begin();
@@ -90,14 +88,13 @@ export async function createTableReservation(input: ReservationInput): Promise<R
       return { ok: false, error: { kind: "taken", message: "That table is already held for this time. Choose another period or table." } };
     }
 
-    // 2. The booking number, from Tbl_Serials code 'TR' — TR-0001, TR-0002 …
-    const resId = (
-      await takeSerial(tx as never, shape, {
-        code: "TR",
-        locCode: TEXT(input.locCode, 10),
-        badge: "TR",
-      })
-    ).label.slice(0, 10);
+    // 2. The booking number, from dbo.Tbl_TxnNumbers (row RV) — T000013, T000014 …
+    const number = await allocateTxnNumber(tx, "table", { locCode: TEXT(input.locCode, 10) });
+    if (!number.ok) {
+      await tx.rollback();
+      return { ok: false, error: { kind: "not-configured", message: number.error.message } };
+    }
+    const resId = number.number.slice(0, 10);
 
     // 3. The booking itself.
     const remarks = [input.groupName ? `Web · ${input.groupName}` : "Web booking", TEXT(input.note, 600)].filter(Boolean).join(" · ").slice(0, 800);

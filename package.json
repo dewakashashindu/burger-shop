@@ -10,6 +10,8 @@
     "db:check": "node scripts/db-check.mjs",
     "db:setup": "node scripts/db-setup.mjs",
     "db:order": "node scripts/db-order-setup.mjs",
+    "db:room": "node scripts/room-setup.mjs",
+    "rooms:check": "node scripts/room-check.mjs",
     "otp:setup": "node scripts/otp-setup.mjs",
     "bundle:order": "node scripts/make-order-bundle.mjs"
   },

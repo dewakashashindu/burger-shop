@@ -23,8 +23,9 @@
  */
 
 import Image from "next/image";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { PACKAGES, ROOMS, money, type Room } from "./booking-data";
+import { ROOM_STOCK } from "@/lib/room-inventory";
 import { useGuest } from "../session";
 import SignInDialog, { type SignedInCustomer } from "../SignInDialog";
 import "./room-booking.css";
@@ -96,12 +97,15 @@ const BEDS: Record<string, string> = {
 };
 
 /**
- * How many of each room the house actually has. The four rooms on this site are
- * four real rooms — one Garden, one Twin, one Courtyard, one Family — so a stay
- * of two rooms is two different rooms, never the same one twice. When the
- * availability endpoint exists, this is the number it will return per night.
+ * How many of each room the house has — sample figures, kept in
+ * lib/room-inventory.ts so the page and the server agree on one number.
+ *
+ * What is *left* on given nights never comes from here: that is counted from
+ * the stay book by /api/rooms/availability (see lib/room-availability.ts), and
+ * this map is what those counts start from — and all the page shows when no
+ * database is reachable.
  */
-const STOCK: Record<string, number> = { garden: 1, twin: 1, courtyard: 1, family: 1 };
+const STOCK = ROOM_STOCK;
 
 const EXTRAS: Record<string, Extra> = {
   garden: {
@@ -130,6 +134,21 @@ const EXTRAS: Record<string, Extra> = {
   },
 };
 
+/**
+ * "two Garden Rooms, two Twin Garden Rooms, one Courtyard Suite and one Family
+ * Residence" — said from the same counts the basket uses, so the sentence can
+ * never drift away from what is actually for sale.
+ */
+const HOUSE = (() => {
+  const words = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight"];
+  const say = (n: number) => words[n] ?? String(n);
+  const parts = ROOMS.map((room) => {
+    const n = STOCK[room.id] ?? 1;
+    return `${say(n)} ${room.name}${n === 1 ? "" : "s"}`;
+  });
+  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}.`;
+})();
+
 const HOUSE_FACILITIES = ["Pool & garden", "Beach 3 minutes on foot", "Breakfast on the terrace", "Free parking", "Airport transfer on request", "Laundry service"];
 const ARRIVAL_TIMES = ["12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00", "22:00"];
 const DEPARTURE_TIMES = ["06:00", "07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00"];
@@ -137,8 +156,10 @@ const COUNTRIES = ["Sri Lanka", "India", "United Kingdom", "Germany", "Australia
 const MAX_NIGHTS = 30;
 
 /**
- * Nights another guest already holds, per room — the only place availability
- * would arrive from. Empty today: no read, no write, nothing invented.
+ * Nights another guest holds, per room, for a page with no database behind it.
+ * A connected site never uses this: the nights come back from the stay book in
+ * `liveLeft` / `rangeFull` below, and the calendar greys out a day only when the
+ * restaurant says it is sold out.
  *   { garden: [["2026-11-12", "2026-11-15"]] }  // nights 12, 13, 14
  */
 const HOLDS: Record<string, [string, string][]> = {};
@@ -242,6 +263,16 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
   });
   const [errors, setErrors] = useState<Errors>({});
   const [signInOpen, setSignInOpen] = useState(false);
+
+  // ── what the desk says is left ──────────────────────────────────────────
+  // `liveLeft` stays null until /api/rooms/availability answers, so a site with
+  // no database shows the four rooms it knows about instead of a made-up count.
+  const [liveLeft, setLiveLeft] = useState<Record<string, number> | null>(null);
+  // Nights sold out across all four rooms — the calendar greys these out.
+  const [rangeFull, setRangeFull] = useState<string[]>([]);
+  const [monthFull, setMonthFull] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [booking, setBooking] = useState<null | {
     ref: string;
     roomId: string;
@@ -278,7 +309,12 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
   const pickedRooms = picked.map(roomOf);
   const countOf = (id: string) => picked.filter((p) => p === id).length;
   const inStay = (id: string) => countOf(id) > 0;
-  const canAdd = (id: string) => countOf(id) < (STOCK[id] ?? 1);
+  /** What the desk can still sell of this room on these nights. */
+  const stockOf = (id: string) => (liveLeft ? (liveLeft[id] ?? 0) : (STOCK[id] ?? 1));
+  const leftOf = (id: string) => Math.max(0, stockOf(id) - countOf(id));
+  const canAdd = (id: string) => leftOf(id) > 0;
+  /** True when the count on screen is the restaurant's, not the fallback. */
+  const live = liveLeft !== null;
   const sleepsInStay = pickedRooms.reduce((n, r) => n + r.sleeps, 0);
   const nightlyTotal = pickedRooms.reduce((n, r) => n + perNight(r), 0);
   const stayTotal = nightlyTotal * Math.max(nights, 0);
@@ -286,7 +322,7 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
   const fitsEveryone = rooms > 0 && sleepsInStay >= guests;
 
   const addRoom = (id: string) =>
-    setPicked((old) => (old.filter((x) => x === id).length < (STOCK[id] ?? 1) ? [...old, id] : old));
+    setPicked((old) => (old.filter((x) => x === id).length < stockOf(id) ? [...old, id] : old));
   const removeRoom = (id: string) =>
     setPicked((old) => {
       const i = old.lastIndexOf(id);
@@ -300,17 +336,107 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
     for (let d = from; d < to; d = addDays(d, 1)) if (isHeld(id, d)) return false;
     return true;
   };
-  const everyRoomHeld = (iso: string) => ROOMS.every((r) => isHeld(r.id, iso));
+  const soldOut = new Set([...rangeFull, ...monthFull]);
+  const everyRoomHeld = (iso: string) => soldOut.has(iso) || ROOMS.every((r) => isHeld(r.id, iso));
   const firstHeldBetween = (from: string, to: string) => {
     for (let d = from; d < to; d = addDays(d, 1)) if (everyRoomHeld(d)) return d;
     return "";
   };
 
   const available = useMemo(
-    () => ROOMS.filter((r) => roomIsFree(r.id, checkin, checkout)),
+    // A room is offered when it is free of holds AND the desk still has one —
+    // unless it is already in this guest's basket, which is theirs either way.
+    () => ROOMS.filter((r) => roomIsFree(r.id, checkin, checkout) && (stockOf(r.id) > 0 || inStay(r.id))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [checkin, checkout],
+    [checkin, checkout, liveLeft, picked],
   );
+
+  /* ── availability, straight from the stay book ────────────────────────── */
+  // Two reads: the chosen nights (which rooms the desk can still sell) and the
+  // month on screen (which nights are sold out across all four). Both are
+  // best-effort — an unreachable desk leaves the page on its four known rooms.
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    const asked = checkin && checkout && checkout > checkin ? { checkin, checkout } : null;
+
+    (async () => {
+      if (!asked) {
+        if (active) {
+          setLiveLeft(null);
+          setRangeFull([]);
+        }
+        return;
+      }
+      try {
+        const response = await fetch(
+          `/api/rooms/availability?checkin=${asked.checkin}&checkout=${asked.checkout}`,
+          { signal: controller.signal, headers: { accept: "application/json" } },
+        );
+        const data = (await response.json().catch(() => null)) as
+          | { ok?: boolean; rooms?: { code?: string; left?: number }[]; fullNights?: string[] }
+          | null;
+        if (!active) return;
+        if (!response.ok || !data?.ok || !Array.isArray(data.rooms)) {
+          setLiveLeft(null);
+          setRangeFull([]);
+          return;
+        }
+        const left: Record<string, number> = {};
+        for (const row of data.rooms) {
+          const code = String(row.code ?? "").toLowerCase();
+          if (code) left[code] = Math.max(0, Math.trunc(Number(row.left) || 0));
+        }
+        setLiveLeft(left);
+        setRangeFull(Array.isArray(data.fullNights) ? data.fullNights : []);
+        // The desk may have sold the last of a room while this guest was
+        // choosing: give back the places the basket can no longer honour.
+        setPicked((old) => {
+          const seen: Record<string, number> = {};
+          const next = old.filter((id) => {
+            seen[id] = (seen[id] ?? 0) + 1;
+            return seen[id] <= (left[id] ?? 0);
+          });
+          return next.length === old.length ? old : next;
+        });
+      } catch {
+        if (active) {
+          setLiveLeft(null);
+          setRangeFull([]);
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [checkin, checkout]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    const monthKey = `${month.y}-${String(month.m + 1).padStart(2, "0")}`;
+
+    (async () => {
+      try {
+        const response = await fetch(`/api/rooms/availability?month=${monthKey}`, {
+          signal: controller.signal,
+          headers: { accept: "application/json" },
+        });
+        const data = (await response.json().catch(() => null)) as { ok?: boolean; fullNights?: string[] } | null;
+        if (!active) return;
+        setMonthFull(response.ok && data?.ok && Array.isArray(data.fullNights) ? data.fullNights : []);
+      } catch {
+        if (active) setMonthFull([]);
+      }
+    })();
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [month]);
 
   const room = roomId ? roomOf(roomId) : null;
   const extra = room ? EXTRAS[room.id] : null;
@@ -394,31 +520,83 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
     return e;
   };
 
-  const finish = () => {
-    setBooking({
-      ref: `MM-${String(Date.now()).slice(-6)}`,
-      roomId: picked[0] ?? "",
-      checkin,
-      checkout,
-      arrival: form.arrival,
-      departure: form.departure,
-      adults,
-      children,
-      rooms: picked,
-      pkgId,
-      cur,
-      total: stayTotal,
-      name: form.name.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      country: form.country,
-    });
-    go("done");
+  // The stay is written to dbo.Tbl_RoomReservation — one row per room, under a
+  // number from dbo.Tbl_TxnNumbers (row RR). The desk re-checks the nights in
+  // the same transaction, so a room taken while this guest was typing comes back
+  // as a plain sentence rather than an oversold booking. Never a pretend ref:
+  // if the desk cannot be reached the form stays filled and says so.
+  const submit = async () => {
+    setSaving(true);
+    setSaveError("");
+    try {
+      const response = await fetch("/api/rooms/confirm", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          checkin,
+          checkout,
+          roomCodes: picked,
+          adults,
+          children,
+          guestName: form.name.trim(),
+          guestPhone: form.phone.trim(),
+          guestEmail: form.email.trim(),
+          guestIdNo: form.nic.trim(),
+          country: form.country,
+          packageCode: pkgId,
+          currency: cur,
+          arrivalTime: form.arrival,
+          departureTime: form.departure,
+          arrivalBy: form.mode,
+          requests: form.note.trim(),
+        }),
+      });
+      const data = (await response.json().catch(() => null)) as
+        | { ok?: boolean; resId?: string; total?: number; rooms?: { code?: string }[]; message?: string; reason?: string }
+        | null;
+
+      if (!response.ok || !data?.ok || !data.resId) {
+        setSaveError(
+          data?.reason === "not-configured"
+            ? "The restaurant’s stay book isn’t connected here, so this booking was not saved. Your details are still in the form."
+            : data?.message
+              ? `${data.message} Nothing was saved.`
+              : "We couldn’t reach the reservation desk, so this booking was not saved. Please try again in a moment.",
+        );
+        return;
+      }
+
+      const saved = Array.isArray(data.rooms) ? data.rooms.map((line) => String(line.code ?? "")).filter(Boolean) : [];
+      setBooking({
+        ref: data.resId,
+        roomId: picked[0] ?? "",
+        checkin,
+        checkout,
+        arrival: form.arrival,
+        departure: form.departure,
+        adults,
+        children,
+        rooms: saved.length ? saved : picked,
+        pkgId,
+        cur,
+        total: Number(data.total) || stayTotal,
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        country: form.country,
+      });
+      go("done");
+    } catch {
+      setSaveError("We couldn’t reach the reservation desk, so this booking was not saved. Please check your connection and try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const confirm = () => {
     const e = validate();
     setErrors(e);
+    setSaveError("");
     if (Object.keys(e).length) {
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
@@ -429,13 +607,15 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
       setSignInOpen(true);
       return;
     }
-    finish();
+    void submit();
   };
 
   const onSignedIn = (_customer: SignedInCustomer) => {
     setSignInOpen(false);
     setForm((old) => ({ ...old, phone: old.phone || _customer.phone || "" }));
-    window.setTimeout(finish, 260);
+    window.setTimeout(() => {
+      void submit();
+    }, 260);
   };
 
   /* ── small render helpers ─────────────────────────────────────────────── */
@@ -604,7 +784,7 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
 
           <section className="rbf-strip rbf-up" style={{ ["--d" as string]: "160ms" }}>
             <div className="rbf-strip-head">
-              <h3>The four rooms</h3>
+              <h3>The rooms</h3>
               <span>{wanted === 1 ? "You will choose one on the next step" : `You will choose ${wanted} on the next step`}</span>
             </div>
             <div className="rbf-strip-grid">
@@ -716,6 +896,12 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
             {nights} {nights === 1 ? "night" : "nights"} · {guests} guest{guests === 1 ? "" : "s"} · {pkg.name}. You asked for{" "}
             {wanted} {wanted === 1 ? "room" : "rooms"} — {wanted === 1 ? "pick it" : "pick them"} below; the types can be mixed.
           </p>
+          {live ? (
+            <p className="rbf-micro" style={{ marginTop: 6 }}>
+              Live from the desk: {available.reduce((n, r) => n + leftOf(r.id), 0)} room
+              {available.reduce((n, r) => n + leftOf(r.id), 0) === 1 ? "" : "s"} still free on these nights.
+            </p>
+          ) : null}
         </div>
         <div className="rbf-daterow">
           <button type="button" className="rbf-btn light small" onClick={() => go("dates")}>
@@ -739,7 +925,20 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
           {available.map((r, i) => {
             const e = EXTRAS[r.id];
             const mine = inStay(r.id);
-            const free = (STOCK[r.id] ?? 1) - countOf(r.id);
+            const free = leftOf(r.id);
+            // Only the desk's own count is quoted as "N left"; without a
+            // database the page says nothing it has not been told.
+            const badge = mine
+              ? "In your stay"
+              : live
+                ? free <= 0
+                  ? "Taken for these dates"
+                  : free === 1
+                    ? "Only 1 left for these dates"
+                    : `${free} left for these dates`
+                : r.id === "courtyard"
+                  ? "Only 1 left for these dates"
+                  : "";
             return (
               <article
                 key={r.id}
@@ -748,12 +947,20 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
               >
                 <div className="rbf-rc-pic">
                   <Image src={r.img} alt={r.name} fill sizes="(max-width:900px) 100vw, 300px" style={{ objectFit: "cover" }} />
-                  {mine ? <span className="rbf-badge">In your stay</span> : r.id === "courtyard" ? <span className="rbf-badge">Only 1 left for these dates</span> : null}
+                  {badge ? <span className="rbf-badge">{badge}</span> : null}
                 </div>
                 <div className="rbf-rc-body">
                   <div className="rbf-rc-title">
                     <span className="rbf-rc-nm">{r.name}</span>
-                    {mine ? <span className="rbf-chip ink">Added</span> : <span className="rbf-chip good">Available</span>}
+                    {mine ? (
+                      <span className="rbf-chip ink">
+                        Added{countOf(r.id) > 1 ? ` ×${countOf(r.id)}` : ""}
+                      </span>
+                    ) : live && free <= 0 ? (
+                      <span className="rbf-chip">Full</span>
+                    ) : (
+                      <span className="rbf-chip good">Available</span>
+                    )}
                   </div>
                   <p className="rbf-rc-blurb">{r.blurb}</p>
                   <div className="rbf-chips-row">
@@ -777,10 +984,18 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
                         <span>↗</span>
                       </button>
                       {mine ? (
-                        <button type="button" className="rbf-btn light small" onClick={() => removeRoom(r.id)}>
-                          <span>Remove</span>
-                          <span>×</span>
-                        </button>
+                        <>
+                          <button type="button" className="rbf-btn light small" onClick={() => removeRoom(r.id)}>
+                            <span>Remove</span>
+                            <span>×</span>
+                          </button>
+                          {free > 0 ? (
+                            <button type="button" className="rbf-btn light small" onClick={() => addRoom(r.id)}>
+                              <span>Add another</span>
+                              <span>+</span>
+                            </button>
+                          ) : null}
+                        </>
                       ) : (
                         <button type="button" className="rbf-btn small" disabled={free <= 0} onClick={() => addRoom(r.id)}>
                           <span>Add this room</span>
@@ -854,7 +1069,7 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
               <span>ⓘ</span>
               <span>
                 {wanted > 1 ? `You asked for ${wanted} rooms. ` : ""}
-                Four rooms in the house — one of each. Nothing is charged now; the desk confirms by phone.
+                Four kinds of room in the house — {HOUSE} Nothing is charged now; the desk confirms by phone.
               </span>
             </div>
           </div>
@@ -1268,11 +1483,16 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
               <span>Back</span>
               <span>‹</span>
             </button>
-            <button type="button" className="rbf-btn" style={{ marginLeft: "auto" }} onClick={confirm}>
-              <span>Confirm booking</span>
-              <span>→</span>
+            <button type="button" className="rbf-btn" style={{ marginLeft: "auto" }} onClick={confirm} disabled={saving}>
+              <span>{saving ? "Saving your stay…" : "Confirm booking"}</span>
+              <span>{saving ? "·" : "→"}</span>
             </button>
           </div>
+          {saveError ? (
+            <p className="rbf-err" role="alert" style={{ marginTop: 10 }}>
+              {saveError}
+            </p>
+          ) : null}
           <p className="rbf-micro" style={{ marginTop: 10 }}>
             {guest ? `Signed in as ${guest.phone} — the booking is saved to this number.` : "You will be asked to sign in once — then the booking is confirmed."}
           </p>
@@ -1375,7 +1595,7 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
           </button>
         </div>
         <p className="rbf-micro" style={{ marginTop: 14 }}>
-          Your details stay in this browser tab — nothing has been sent to the restaurant yet.
+          Saved in the restaurant’s stay book as <b>{booking.ref}</b> — this number is on the desk’s screen too.
         </p>
       </div>
     </div>

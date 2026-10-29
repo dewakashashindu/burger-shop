@@ -79,8 +79,10 @@ const addMinutes = (hhmm: string, minutes: number) => {
 // Reading the clock is impure, so it lives outside the component: render stays pure,
 // and only the click handlers ever ask for the time.
 const nowMs = () => Date.now();
-// A short reference for a table/room request — module scope keeps render pure.
-const bookingRef = (prefix: "MC-TBL" | "MC-STAY") =>
+// A short reference for a stay request — module scope keeps render pure.
+// A table booking never gets one of these: its number is the restaurant's own,
+// handed out by dbo.Tbl_TxnNumbers when the row is actually written.
+const bookingRef = (prefix: "MC-STAY") =>
   `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
 
 const phoneOk = (v: string) => {

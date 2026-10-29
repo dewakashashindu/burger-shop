@@ -189,5 +189,61 @@ if (rows.length === 0) {
   ok("done", `${rows.length} dishes will appear on /menu with these prices`);
 }
 
+head("7. Reservation numbers");
+// Read-only: nothing here touches TxnNo. The booking flow is the only writer.
+const loc = (read("WEB_LOC_CODE") || "01").trim();
+const wanted = [
+  { type: (read("TABLE_SEQ_TYPE") || "RV").trim(), label: "table booking" },
+  { type: (read("STAY_SEQ_TYPE") || "RV").trim(), label: "room booking" },
+  { type: "CC", label: "customer code" },
+];
+const seen = new Set();
+for (const want of wanted) {
+  const key = `${loc}/${want.type}`;
+  if (seen.has(key)) continue;
+  seen.add(key);
+  try {
+    const found = await pool
+      .request()
+      .input("loc", loc)
+      .input("type", want.type)
+      .query(
+        `SELECT TOP 1 LTRIM(RTRIM(Prefix)) AS Prefix, TxnNo, TxnDescription, Enable
+           FROM dbo.Tbl_TxnNumbers WITH (NOLOCK)
+          WHERE LTRIM(RTRIM(LoCCode)) = @loc AND LTRIM(RTRIM(TxnType)) = @type`,
+      );
+    const row = found.recordset?.[0];
+    if (!row) {
+      bad(`${want.label} (${key})`, "no row in dbo.Tbl_TxnNumbers — a booking will be refused, not invented");
+      continue;
+    }
+    const counter = Math.trunc(Number(row.TxnNo ?? 0)) + 1;
+    const next = `${String(row.Prefix ?? "").trim()}${String(counter).padStart(6, "0")}`;
+    if (row.Enable === true || row.Enable === 1) {
+      ok(`${want.label} (${key})`, `TxnNo ${row.TxnNo} → next ${next} · ${String(row.TxnDescription ?? "").trim()}`);
+    } else {
+      bad(`${want.label} (${key})`, `Enable is off — ${String(row.TxnDescription ?? "").trim()} cannot take numbers`);
+    }
+  } catch (error) {
+    warn(`${want.label} (${key})`, `dbo.Tbl_TxnNumbers could not be read — ${error.message.split("\n")[0]}`);
+  }
+}
+
+head("8. Rooms");
+// Read-only: the stay book is written only by /api/rooms/confirm.
+const roomTable = (read("ROOM_TABLE") || "dbo.Tbl_RoomReservation").trim();
+warn("room counts", "sample figures in lib/room-inventory.ts — not a table");
+try {
+  const found = await pool.request().query(
+    `SELECT COUNT(*) AS rows_all,
+            SUM(CASE WHEN ISNULL(Cancel, 0) = 0 AND CheckOut >= CAST(GETDATE() AS date) THEN 1 ELSE 0 END) AS live
+       FROM ${roomTable} WITH (NOLOCK)`,
+  );
+  const row = found.recordset?.[0] ?? {};
+  ok(roomTable, `${Number(row.live) || 0} live row(s), ${Number(row.rows_all) || 0} ever`);
+} catch (error) {
+  bad(roomTable, `${error.message.split("\n")[0]} — run npm run db:room`);
+}
+
 await pool.close();
 console.log("\n\x1b[32mAll good.\x1b[0m Restart the dev server and open http://localhost:3000/menu\n");

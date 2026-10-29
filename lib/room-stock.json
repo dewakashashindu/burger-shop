@@ -1,0 +1,9 @@
+{
+  "_note": "The house's rooms and how many of each. Sample figures — change a number here and the site, the API and `npm run rooms:check` all follow. What is AVAILABLE on given nights is never stored here: that is counted from dbo.Tbl_RoomReservation.",
+  "rooms": [
+    { "code": "garden", "name": "Garden Room", "rooms": 2 },
+    { "code": "twin", "name": "Twin Garden Room", "rooms": 2 },
+    { "code": "courtyard", "name": "Courtyard Suite", "rooms": 1 },
+    { "code": "family", "name": "Family Residence", "rooms": 1 }
+  ]
+}
