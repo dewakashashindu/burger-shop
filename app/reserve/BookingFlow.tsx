@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CATS, DISHES, PACKAGES, PHOTO, ROOMS, money, type Dish, type Room } from "./booking-data";
+import RoomStayCalendar, { timeAdjustment } from "./RoomStayCalendar";
 import type { MenuSnapshot } from "@/lib/menu-cache";
 import type { AvailabilityTable, AvailabilityBooking } from "@/lib/table-availability";
 import type { MenuItem } from "@/lib/menu-source";
@@ -506,6 +507,10 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
     gallery: 0,
     checkin: "",
     checkout: "",
+    // Arrival and departure times — the stay is a date range AND a pair of
+    // times; check-in is from 2pm, check-out by 11am unless changed.
+    timeIn: "14:00",
+    timeOut: "11:00",
     guests: 2,
     name: "",
     phone: "",
@@ -525,6 +530,9 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
   const pkgRate = cur === "LKR" ? stayPkg.local : stayPkg.foreign;
   const roomRate = room ? (cur === "LKR" ? room.local : room.foreign) : 0;
   const roomTotal = (roomRate + pkgRate) * Math.max(nights, 0);
+  // Early arrival / late departure are quoted by the desk, not charged here:
+  // the line is shown next to the total so nothing is a surprise on arrival.
+  const stayAdj = timeAdjustment(r.timeIn, r.timeOut);
 
   const [order, setOrder] = useState({
     method: "delivery" as "delivery" | "pickup",
@@ -1638,10 +1646,18 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
       </div>
       <div className="split">
         <section className="panel reveal">
-          <h3>Dates &amp; guests</h3>
-          <div className="form-grid" style={{ marginTop: 16 }}>
-            <Field id="cIn" label="Check-in" type="date" min={today} value={r.checkin} onChange={(v) => setR({ ...r, checkin: v })} error={errors.checkin} />
-            <Field id="cOut" label="Check-out" type="date" min={r.checkin || today} value={r.checkout} onChange={(v) => setR({ ...r, checkout: v })} error={errors.checkout} />
+          <h3>Your dates &amp; times</h3>
+          <div style={{ marginTop: 14 }}>
+            <RoomStayCalendar
+              checkin={r.checkin}
+              checkout={r.checkout}
+              timeIn={r.timeIn}
+              timeOut={r.timeOut}
+              error={errors.checkin || errors.checkout}
+              onChange={(patch) => setR((old) => ({ ...old, ...patch }))}
+            />
+          </div>
+          <div className="form-grid" style={{ marginTop: 18 }}>
             <div className="field full">
               <span className="lab" id="rgLab">Guests</span>
               <div className="guest-pills" role="group" aria-labelledby="rgLab">
@@ -1691,15 +1707,18 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
         </section>
         {summary(
           <>
-            <div className="sum-line"><span>Check-in</span><b>{r.checkin || "—"}</b></div>
-            <div className="sum-line"><span>Check-out</span><b>{r.checkout || "—"}</b></div>
+            <div className="sum-line"><span>Check-in</span><b>{r.checkin ? `${prettyDay(r.checkin)} · ${prettyTime(r.timeIn)}` : "—"}</b></div>
+            <div className="sum-line"><span>Check-out</span><b>{r.checkout ? `${prettyDay(r.checkout)} · ${prettyTime(r.timeOut)}` : "—"}</b></div>
+            {Boolean(stayAdj.early || stayAdj.latePct) && r.checkin && (
+              <div className="sum-line"><span>{stayAdj.early ? "Early arrival" : "Late departure"}</span><b>quoted by the desk</b></div>
+            )}
             <div className="sum-line"><span>Guests</span><b>{r.guests}</b></div>
             <div className="sum-line"><span>Package</span><b>{stayPkg.name}</b></div>
             <div className="sum-line"><span>Rate · {cur === "LKR" ? "local" : "foreign"} guest</span><b>{money(roomRate, cur)}</b></div>
             <div className="sum-total"><span>Total</span><strong>{nights ? money(roomTotal, cur) : "—"}</strong></div>
           </>,
           <><span>{room.name}</span><span>{nights || 0} {nights === 1 ? "night" : "nights"}</span></>,
-          "Rates are indicative. No payment is taken on this website.",
+          [stayAdj.note, "Rates are indicative. No payment is taken on this website."].filter(Boolean).join(" "),
           room.img,
         )}
       </div>
@@ -2161,7 +2180,7 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
           {kind === "order"
             ? `Thank you, ${order.name.split(" ")[0] || "friend"}. ${isDelivery ? "Delivery" : "Pickup"} for ${scheduleLabel || "your chosen time"}${!isDelivery && pickupLocationName ? ` at ${pickupLocationName}` : ""}. The kitchen will call ${order.phone} to confirm.`
             : kind === "room"
-              ? `${r.name.split(" ")[0] || "Guest"}, we’ve noted your stay from ${r.checkin} to ${r.checkout}.`
+              ? `${r.name.split(" ")[0] || "Guest"}, we’ve noted your stay — in on ${prettyDay(r.checkin)} from ${prettyTime(r.timeIn)}, out on ${prettyDay(r.checkout)} by ${prettyTime(r.timeOut)}.`
               : `Thank you, ${t.name.split(" ")[0] || "friend"}. ${t.tableNo} is yours from ${prettyTime(t.from)} to ${prettyTime(t.to)} on ${prettyDay(t.date)} for ${guests} ${guests === 1 ? "guest" : "guests"}.`}
         </p>
         <p className="micro">
