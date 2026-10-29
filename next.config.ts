@@ -38,11 +38,16 @@ const nextConfig: NextConfig = {
       { key: "Pragma", value: "no-cache" },
       { key: "X-Mila-Build", value: "order-search-16" },
     ];
-    const media = [
-      {
-        key: "Cache-Control",
-        value: "public, max-age=86400, stale-while-revalidate=604800",
-      },
+    // A year, and promised not to change: the hero clip's name carries a hash of
+    // its own bytes, so a new clip is a new URL and this old one is never asked
+    // for again. A returning visitor downloads zero bytes of video.
+    const immutable = [
+      { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+    ];
+    // The poster has no hash in its name, so it revalidates weekly instead — a
+    // new still replaces the old one without waiting a year.
+    const poster = [
+      { key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=604800" },
     ];
     // Prefetch payloads (`?_rsc=…`) are already keyed by a build-specific hash
     // and are left alone: forcing no-store on them makes Chromium cancel the
@@ -50,9 +55,13 @@ const nextConfig: NextConfig = {
     const documentsOnly = { missing: [{ type: "query" as const, key: "_rsc" }] };
     return [
       { source: "/", headers: noStore, ...documentsOnly },
-      // The hero clip is requested by three panes at once; a day of caching
-      // means the browser downloads it once and reuses the same bytes.
-      { source: "/hero.mp4", headers: media },
+      // The hero clip hero-4c11bfba.mp4: 33 MB of video, served once and never again.
+      // Rename the file (new hash) and update this line when the clip changes.
+      { source: "/hero-4c11bfba.mp4", headers: immutable },
+      { source: "/hero-poster.jpg", headers: poster },
+      // The pre-hash name, for a browser still holding a page cached from
+      // before the rename: same promise, so it is not re-downloaded either.
+      { source: "/hero.mp4", headers: immutable },
       {
         source:
           "/:path((?!_next/|images/|fonts/|.*\\.(?:mp4|webm|png|jpe?g|svg|webp|ico|woff2?|ttf|otf|json|txt|xml|webmanifest)$).*)",

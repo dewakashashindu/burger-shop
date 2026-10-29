@@ -1575,8 +1575,8 @@ export default function App({ storyPage = false, menuPage = false, contactPage =
                 />
                 <HeroClip
                   className="vc-clip"
-                  src="/hero.mp4"
-                  poster={IMAGE.restaurant}
+                  src="/hero-4c11bfba.mp4"
+                  poster="/hero-poster.jpg"
                 />
                 <div className="vc-veil" aria-hidden="true" />
               </div>
