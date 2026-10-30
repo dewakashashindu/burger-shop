@@ -34,8 +34,8 @@ import {
 const RESTAURANT = {
   name: "Mila Mirissā",
   email: "hello.milamirissa@gmail.com",
-  // Every number the restaurant answers on, in the order they should be tried.
-  phones: ["0772336233", "0771096131"],
+  // The one number the restaurant answers on — calls, WhatsApp, everything.
+  phones: ["0772336233"],
 };
 // "0772336233" is hard to read at hero size; the link still dials the
 // number exactly as it is stored.

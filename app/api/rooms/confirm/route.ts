@@ -1,4 +1,5 @@
 import { connection, NextResponse } from "next/server";
+import { notifyStayBooking } from "@/lib/booking-notify";
 import { createRoomReservation, type RoomStayInput } from "@/lib/room-reservation";
 
 /**
@@ -42,5 +43,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: kind, message }, { status, headers: { "cache-control": "no-store" } });
   }
 
-  return NextResponse.json({ ok: true, ...result.reservation }, { headers: { "cache-control": "no-store" } });
+  // Saved. Now the guest's text, the guest's email and the desk's copy — after
+  // the commit, and never able to undo it.
+  const notified = await notifyStayBooking({
+    resId: result.reservation.resId,
+    rooms: result.reservation.rooms.map((line) => ({ name: line.name })),
+    checkin: result.reservation.checkin,
+    checkout: result.reservation.checkout,
+    nights: result.reservation.nights,
+    adults: Number(body.adults) || 1,
+    children: Number(body.children) || 0,
+    arrival: String(body.arrivalTime ?? ""),
+    departure: String(body.departureTime ?? ""),
+    board: String(body.packageCode ?? ""),
+    currency: result.reservation.currency,
+    total: result.reservation.total,
+    name: String(body.guestName ?? ""),
+    phone: String(body.guestPhone ?? ""),
+    email: String(body.guestEmail ?? ""),
+    idNo: String(body.guestIdNo ?? ""),
+    country: String(body.country ?? ""),
+    requests: String(body.requests ?? ""),
+  }).catch((error: unknown) => {
+    console.error("[notify] stay saved, notification failed:", error);
+    return { sms: "failed" as const, guest: "failed" as const, manager: "failed" as const };
+  });
+
+  return NextResponse.json(
+    { ok: true, ...result.reservation, notified },
+    { headers: { "cache-control": "no-store" } },
+  );
 }

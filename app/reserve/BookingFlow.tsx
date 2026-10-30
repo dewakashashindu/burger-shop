@@ -85,6 +85,28 @@ const nowMs = () => Date.now();
 const bookingRef = (prefix: "MC-STAY") =>
   `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
 
+/** "0", "12" — never "e8510988760", a stray minus, or a decimal point. */
+const onlyDigits = (value: string, max = 200) => {
+  const digits = value.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 3);
+  if (!digits) return "0";
+  return String(Math.min(max, Number(digits)));
+};
+
+/**
+ * Somebody pressed Confirm with something missing: put the cursor in the first
+ * hole and bring it into view, so the button is never "doing nothing". Called as
+ * `focusField(id)` where id is the input the first error belongs to.
+ */
+const focusField = (id: string | undefined) => {
+  if (!id || typeof document === "undefined") return;
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  window.setTimeout(() => {
+    (el as HTMLElement).focus({ preventScroll: true });
+  }, 220);
+};
+
 const phoneOk = (v: string) => {
   const digits = v.replace(/[\s()-]/g, "");
   return /^(?:\+94|0094|0)?7\d{8}$/.test(digits) || /^\+?\d{9,15}$/.test(digits);
@@ -896,7 +918,23 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
     if (!activeGroup) next.group = "Choose a table group.";
     if (!t.tableNo) next.tableNo = "Choose a table.";
     setErrors(next);
-    if (Object.keys(next).length) return;
+    if (Object.keys(next).length) {
+      // One field at a time, in the order the form reads: the first gap gets
+      // the cursor and the page scrolls to it.
+      const first: [string, string | undefined][] = [
+        ["phone", "tphone"],
+        ["name", "tname"],
+        ["date", "tdate"],
+        ["from", "tfrom"],
+        ["to", "tto"],
+        ["group", "tgroup"],
+        ["tableNo", "ttable"],
+        ["guests", "tlocal"],
+      ];
+      const hit = first.find(([key]) => next[key]);
+      focusField(hit?.[1]);
+      return;
+    }
     if (!getGuest()) {
       askToSignIn("table", t.phone, "booking");
       return;
@@ -919,6 +957,9 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
           pax: guests,
           customerName: t.name.trim(),
           customerPhone: t.phone.trim(),
+          // The signed-in guest's email, when the sign-in record has one — the
+          // confirmation and the desk's copy go there.
+          customerEmail: getGuest()?.email ?? "",
           note: t.note.trim(),
         }),
       });
@@ -979,7 +1020,21 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
     const placeMsg = !isDelivery && locations.length > 1 && !pickupLocation ? "Choose the restaurant you’ll collect from." : "";
     if (placeMsg) next.location = placeMsg;
     setErrors(next);
-    if (Object.keys(next).length) return;
+    if (Object.keys(next).length) {
+      // The cart, then the time, then the place, then who is ordering —
+      // whichever comes first is where the cursor lands.
+      const first: [string, string | undefined][] = [
+        ["cart", "order-cart"],
+        ["schedule", "ordDate"],
+        ["location", "ordLoc"],
+        ["phone", "ophone"],
+        ["name", "oname"],
+        ["address", "oaddr"],
+      ];
+      const hit = first.find(([key]) => next[key]);
+      focusField(hit?.[1]);
+      return;
+    }
     if (!getGuest()) {
       askToSignIn("order", order.phone, "order");
       return;
@@ -1418,7 +1473,17 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
               <label htmlFor="tlocal">Local guests *</label>
               <div className="guest-stepper">
                 <button type="button" aria-label="One fewer local guest" onClick={() => setT({ ...t, local: String(Math.max(0, (Number(t.local) || 0) - 1)), tableNo: "" })}>−</button>
-                <input id="tlocal" type="number" inputMode="numeric" min="0" max="200" step="1" value={t.local} onChange={(e) => setT({ ...t, local: e.target.value, tableNo: "" })} aria-invalid={errors.guests ? true : undefined} />
+                <input
+                  id="tlocal"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
+                  maxLength={3}
+                  value={t.local}
+                  onChange={(e) => setT({ ...t, local: onlyDigits(e.target.value), tableNo: "" })}
+                  aria-invalid={errors.guests ? true : undefined}
+                />
                 <button type="button" aria-label="One more local guest" onClick={() => setT({ ...t, local: String(Math.min(200, (Number(t.local) || 0) + 1)), tableNo: "" })}>+</button>
               </div>
               <p className="micro">Guests living in Sri Lanka.</p>
@@ -1427,7 +1492,17 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
               <label htmlFor="tforeign">Foreign guests</label>
               <div className="guest-stepper">
                 <button type="button" aria-label="One fewer foreign guest" onClick={() => setT({ ...t, foreign: String(Math.max(0, (Number(t.foreign) || 0) - 1)), tableNo: "" })}>−</button>
-                <input id="tforeign" type="number" inputMode="numeric" min="0" max="200" step="1" value={t.foreign} onChange={(e) => setT({ ...t, foreign: e.target.value, tableNo: "" })} />
+                <input
+                  id="tforeign"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
+                  maxLength={3}
+                  value={t.foreign}
+                  onChange={(e) => setT({ ...t, foreign: onlyDigits(e.target.value), tableNo: "" })}
+                  aria-invalid={errors.guests ? true : undefined}
+                />
                 <button type="button" aria-label="One more foreign guest" onClick={() => setT({ ...t, foreign: String(Math.min(200, (Number(t.foreign) || 0) + 1)), tableNo: "" })}>+</button>
               </div>
               <p className="micro">Visiting from abroad.</p>
@@ -1884,7 +1959,11 @@ export default function BookingFlow({ start = "choose", menu: initialMenu }: { s
               <button type="button" className="text-link" onClick={() => bringDetails(order.phone, "order")}>Bring my details</button>
             </p>
           )}
-          {errors.cart && <p className="err" role="alert">{errors.cart}</p>}
+          {/* The cart error belongs to the button that opens the cart, so the
+              page can scroll back to it when the order cannot start. */}
+          <span id="order-cart" tabIndex={-1}>
+            {errors.cart && <p className="err" role="alert">{errors.cart}</p>}
+          </span>
           {placeError && <p className="err" role="alert">{placeError}</p>}
           {signInHint}
           {signedInLine}

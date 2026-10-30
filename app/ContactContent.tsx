@@ -10,8 +10,8 @@ import Link from "next/link";
  * either number. Every value is a real link, not a picture of one.
  */
 
-const PHONES = ["0772336233", "0771096131"] as const;
-const WHATSAPP = "94771096131"; // 0771096131 with the country code, as wa.me expects
+const PHONES = ["0772336233"] as const;
+const WHATSAPP = "94772336233"; // 0772336233 with the country code, as wa.me expects
 const EMAIL = "hello.milamirissa@gmail.com";
 
 const WA_TEXT = encodeURIComponent(
@@ -104,7 +104,7 @@ export default function ContactContent() {
             <span className="ct-badge">Quickest reply</span>
           </span>
           <span className="ct-card__label">WHATSAPP</span>
-          <strong className="ct-card__value">Message 0771096131</strong>
+          <strong className="ct-card__value">Message 0772336233</strong>
           <span className="ct-card__hint">
             Send a message and we’ll write back — tables, rooms, takeaway.
           </span>

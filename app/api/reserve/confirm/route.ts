@@ -1,4 +1,5 @@
 import { connection, NextResponse } from "next/server";
+import { notifyTableBooking } from "@/lib/booking-notify";
 import { createTableReservation, type ReservationInput } from "@/lib/table-reservation";
 
 /**
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
     pax: Number(body.pax ?? 0),
     customerName: String(body.customerName ?? ""),
     customerPhone: String(body.customerPhone ?? ""),
+    customerEmail: String(body.customerEmail ?? ""),
     note: String(body.note ?? ""),
   });
 
@@ -34,5 +36,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: kind, message }, { status, headers: { "cache-control": "no-store" } });
   }
 
-  return NextResponse.json({ ok: true, ...result.reservation }, { headers: { "cache-control": "no-store" } });
+  // The booking is in the book. Now the text to the guest, the confirmation to
+  // the guest's inbox, and the desk's copy to MGRemail — all after the commit,
+  // and none of them able to undo it.
+  const notified = await notifyTableBooking({
+    resId: result.reservation.resId,
+    tableNo: result.reservation.tableNo,
+    area: body.groupName ? String(body.groupName) : "",
+    date: result.reservation.date,
+    from: result.reservation.timeFrom,
+    to: result.reservation.timeTo,
+    pax: Number(body.pax) || 0,
+    name: String(body.customerName ?? ""),
+    phone: String(body.customerPhone ?? ""),
+    email: String(body.customerEmail ?? ""),
+    note: String(body.note ?? ""),
+  }).catch((error: unknown) => {
+    console.error("[notify] table booking saved, notification failed:", error);
+    return { sms: "failed" as const, guest: "failed" as const, manager: "failed" as const };
+  });
+
+  return NextResponse.json(
+    { ok: true, ...result.reservation, notified },
+    { headers: { "cache-control": "no-store" } },
+  );
 }

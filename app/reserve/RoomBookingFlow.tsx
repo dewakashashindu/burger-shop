@@ -509,6 +509,28 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
   /* ── confirm ──────────────────────────────────────────────────────────── */
   const readForm = () => ({ ...form, name: form.name.trim(), nic: form.nic.trim(), email: form.email.trim(), phone: form.phone.trim() });
 
+  /**
+   * The guest pressed Confirm with something missing: the page scrolls to the
+   * first field that needs an answer and puts the cursor in it, so the button
+   * never looks like it did nothing. Every field has an id — rbfName, rbfNic,
+   * rbfEmail, rbfPhone — so the order is simply that list.
+   */
+  const focusFirst = (keys: Errors) => {
+    const order: [string, string][] = [
+      ["name", "rbfName"],
+      ["nic", "rbfNic"],
+      ["email", "rbfEmail"],
+      ["phone", "rbfPhone"],
+      ["agree", "rbfAgree"],
+    ];
+    const hit = order.find(([key]) => keys[key]);
+    if (!hit || typeof document === "undefined") return;
+    const el = document.getElementById(hit[1]);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => (el as HTMLElement).focus({ preventScroll: true }), 220);
+  };
+
   const validate = () => {
     const f = readForm();
     const e: Errors = {};
@@ -598,7 +620,7 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
     setErrors(e);
     setSaveError("");
     if (Object.keys(e).length) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      focusFirst(e);
       return;
     }
     // Confirming a stay still needs a proven number, exactly as the table
@@ -1471,7 +1493,7 @@ export default function RoomBookingFlow({ onExit }: { onExit: () => void }) {
           </Field>
 
           <label className="rbf-agree">
-            <input type="checkbox" checked={form.agree} onChange={(e) => setForm({ ...form, agree: e.target.checked })} />
+            <input id="rbfAgree" type="checkbox" checked={form.agree} onChange={(e) => setForm({ ...form, agree: e.target.checked })} />
             <span>
               I agree to the cancellation policy — free until {freeCancelDay}, after which the first night is kept. No card is taken on this website.
               {errors.agree ? <span className="rbf-err">{errors.agree}</span> : null}

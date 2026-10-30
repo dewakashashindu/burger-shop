@@ -28,6 +28,8 @@ export type ReservationInput = {
   pax: number;
   customerName: string;
   customerPhone: string;
+  /** The signed-in guest's email — the confirmation goes there when it is known. */
+  customerEmail?: string;
   note?: string;
 };
 
