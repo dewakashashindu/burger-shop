@@ -1636,7 +1636,7 @@ button.circle-button:hover {
 .order-pill {
   position: fixed;
   right: 26px;
-  bottom: 24px;
+  bottom: 40px;
   z-index: 60;
   display: inline-flex;
   align-items: center;
@@ -1752,7 +1752,7 @@ button.circle-button:hover {
 @media (max-width: 767px) {
   .order-pill {
     right: 16px;
-    bottom: 16px;
+    bottom: 32px;
     padding: 14px 22px;
     font-size: 13px;
   }
@@ -1772,7 +1772,7 @@ button.circle-button:hover {
 .signin-fab {
   position: fixed;
   right: 24px;
-  bottom: 24px;
+  bottom: 40px;
   z-index: 60;
   display: inline-flex;
   align-items: center;
@@ -1796,7 +1796,7 @@ button.circle-button:hover {
   opacity: 0.9;
 }
 .signin-fab.is-stacked {
-  bottom: 92px;
+  bottom: 108px;
 }
 .signin-fab:hover {
   transform: translateY(-1px);
@@ -1846,12 +1846,12 @@ button.circle-button:hover {
 @media (max-width: 767px) {
   .signin-fab {
     right: 16px;
-    bottom: 16px;
+    bottom: 32px;
     padding: 10px 14px;
     font-size: 11.5px;
   }
   .signin-fab.is-stacked {
-    bottom: 78px;
+    bottom: 94px;
   }
 }
 
